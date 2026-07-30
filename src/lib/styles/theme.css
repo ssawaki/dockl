@@ -1,0 +1,137 @@
+/*
+ * Fluent 2 inspired design tokens. Kept intentionally transparent/translucent so the
+ * Windows 11 Mica backdrop applied via window-vibrancy (see src-tauri/src/lib.rs)
+ * shows through underneath the WebView content.
+ */
+:root {
+  color-scheme: light;
+  --dockl-accent: #0f6cbd;
+  --dockl-accent-hover: #115ea3;
+  --dockl-link: #3aa0ff;
+  --dockl-text-primary: #1b1a19;
+  --dockl-text-secondary: #605e5c;
+  --dockl-surface: rgba(255, 255, 255, 0.6);
+  --dockl-surface-hover: rgba(255, 255, 255, 0.8);
+  --dockl-border: rgba(0, 0, 0, 0.08);
+  --dockl-titlebar: rgba(255, 255, 255, 0.35);
+  --dockl-danger: #c42b1c;
+  --dockl-success: #0f7b0f;
+  --dockl-radius: 8px;
+  --dockl-font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --dockl-scrollbar-thumb: rgba(0, 0, 0, 0.25);
+  --dockl-scrollbar-thumb-hover: rgba(0, 0, 0, 0.4);
+  --dockl-selection-bg: rgba(15, 108, 189, 0.5);
+  /* Solid (non-Mica-blended) background for floating overlays like context menus,
+     where content behind them showing through would hurt readability. */
+  --dockl-menu-bg: #faf9f8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --dockl-text-primary: #f3f2f1;
+    --dockl-text-secondary: #c8c6c4;
+    --dockl-surface: rgba(32, 32, 32, 0.55);
+    --dockl-surface-hover: rgba(45, 45, 45, 0.7);
+    --dockl-border: rgba(255, 255, 255, 0.08);
+    --dockl-titlebar: rgba(20, 20, 20, 0.35);
+    --dockl-scrollbar-thumb: rgba(255, 255, 255, 0.25);
+    --dockl-scrollbar-thumb-hover: rgba(255, 255, 255, 0.4);
+    --dockl-menu-bg: #292929;
+  }
+}
+
+html,
+body {
+  background: transparent;
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--dockl-font);
+  color: var(--dockl-text-primary);
+  -webkit-font-smoothing: antialiased;
+  /* Native Windows apps don't let you drag-select chrome (headings, labels, buttons).
+     Opt specific content (e.g. copyable values in the detail panel) back in with
+     `.selectable` rather than leaving the whole page selectable by default. */
+  user-select: none;
+}
+
+.selectable {
+  user-select: text;
+  cursor: text;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+/* The default browser selection highlight (bright, semi-transparent blue) is one of
+   the biggest tells that something is "a webpage". Tie it to our own accent instead,
+   kept translucent so it reads as a soft tint rather than an opaque block. */
+::selection {
+  background: var(--dockl-selection-bg);
+}
+
+/* Shared focus ring for custom (non-native) interactive elements — list rows, menu
+   items, tabs, cards — that manage their own keyboard navigation via the
+   `rovingFocus` action instead of being native <button>/<a> elements. */
+[data-roving-item]:focus-visible {
+  outline: 2px solid var(--dockl-accent);
+  outline-offset: -2px;
+}
+
+.dockl-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.dockl-content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px;
+}
+
+.dockl-surface {
+  background: var(--dockl-surface);
+  border: 1px solid var(--dockl-border);
+  border-radius: var(--dockl-radius);
+}
+
+/* WebView2 is Chromium-based, so `color-scheme` above handles native dark-mode
+   colors, but we also thin the scrollbar down to something closer to Windows 11's
+   own overlay scrollbars instead of the chunky classic default. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--dockl-scrollbar-thumb);
+  border-radius: 100px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--dockl-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+/* The square where horizontal and vertical scrollbars meet; left unstyled it renders
+   with the browser's default (opaque, theme-mismatched) fill. */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
