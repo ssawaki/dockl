@@ -1,0 +1,25 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+# Matches printWidth in .prettierrc and rustfmt's default max_width.
+max_line_length = 100
+
+# rustfmt's defaults, which the Tauri side is formatted with.
+[*.rs]
+indent_size = 4
+
+# Trailing whitespace is significant in Markdown (two spaces = line break).
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{lock,lockb}]
+insert_final_newline = false
+
+[package-lock.json]
+indent_size = 2
