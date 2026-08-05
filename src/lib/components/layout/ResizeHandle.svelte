@@ -1,5 +1,9 @@
 <script lang="ts">
-  import { masterListWidth, setMasterListWidth, clampMasterListWidth } from "$lib/stores/appearance";
+  import {
+    masterListWidth,
+    setMasterListWidth,
+    clampMasterListWidth,
+  } from "$lib/stores/appearance";
 
   let dragging = $state(false);
   let startX = 0;
@@ -30,7 +34,6 @@
     (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     void setMasterListWidth($masterListWidth);
   }
-
 </script>
 
 <!-- Not focusable, and `separator` rather than `slider`: a slider's contract is that it

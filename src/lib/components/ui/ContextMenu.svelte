@@ -39,7 +39,8 @@
     let nx = targetX;
     let ny = targetY;
     if (nx + rect.width > window.innerWidth - margin) nx = window.innerWidth - rect.width - margin;
-    if (ny + rect.height > window.innerHeight - margin) ny = window.innerHeight - rect.height - margin;
+    if (ny + rect.height > window.innerHeight - margin)
+      ny = window.innerHeight - rect.height - margin;
     adjustedX = Math.max(margin, nx);
     adjustedY = Math.max(margin, ny);
   });

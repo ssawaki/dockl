@@ -4,7 +4,11 @@ export function streamLogs(id: string, tail = 200): Promise<string> {
   return invoke("stream_logs", { id, tail });
 }
 
-export function streamComposeLogs(project: string, configFiles: string[], tail = 200): Promise<string> {
+export function streamComposeLogs(
+  project: string,
+  configFiles: string[],
+  tail = 200,
+): Promise<string> {
   return invoke("stream_compose_logs", { project, configFiles, tail });
 }
 

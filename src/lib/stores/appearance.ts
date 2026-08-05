@@ -69,7 +69,8 @@ async function apply() {
 
   document.documentElement.dataset.theme = dark ? "dark" : "light";
   document.documentElement.dataset.material = material;
-  document.body.style.backgroundColor = material === "solid" ? (dark ? SOLID_BG.dark : SOLID_BG.light) : "";
+  document.body.style.backgroundColor =
+    material === "solid" ? (dark ? SOLID_BG.dark : SOLID_BG.light) : "";
   applyFluentTheme(dark);
 
   try {

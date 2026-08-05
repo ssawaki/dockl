@@ -23,8 +23,21 @@ interface RawDockerStats {
 // Docker renders MemUsage with go-units' binary sizes (KiB/MiB/GiB) but NetIO/BlockIO
 // with its decimal sizes (kB/MB/GB) - both tables are needed since the two fields use
 // different bases for what looks like the same kind of value.
-const BINARY_UNITS: Record<string, number> = { B: 1, KiB: 1024, MiB: 1024 ** 2, GiB: 1024 ** 3, TiB: 1024 ** 4 };
-const DECIMAL_UNITS: Record<string, number> = { B: 1, kB: 1000, KB: 1000, MB: 1000 ** 2, GB: 1000 ** 3, TB: 1000 ** 4 };
+const BINARY_UNITS: Record<string, number> = {
+  B: 1,
+  KiB: 1024,
+  MiB: 1024 ** 2,
+  GiB: 1024 ** 3,
+  TiB: 1024 ** 4,
+};
+const DECIMAL_UNITS: Record<string, number> = {
+  B: 1,
+  kB: 1000,
+  KB: 1000,
+  MB: 1000 ** 2,
+  GB: 1000 ** 3,
+  TB: 1000 ** 4,
+};
 
 /** Parses a Docker-formatted size string (e.g. `"15.76GB"`, `"208.9kB"`) into bytes. */
 export function parseSize(raw: string | undefined): number {

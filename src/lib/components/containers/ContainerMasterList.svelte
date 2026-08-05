@@ -115,7 +115,8 @@
       entries.push({ kind: "standalone", container: c });
     }
 
-    const isRunning = (e: Entry) => (e.kind === "project" ? e.running : e.container.state === "running");
+    const isRunning = (e: Entry) =>
+      e.kind === "project" ? e.running : e.container.state === "running";
     return {
       running: entries.filter(isRunning),
       stopped: entries.filter((e) => !isRunning(e)),
@@ -160,7 +161,11 @@
   function handleGroupRowClick(e: MouseEvent, name: string) {
     selectProject(name);
     const now = e.timeStamp;
-    if (lastGroupRowClick && lastGroupRowClick.name === name && now - lastGroupRowClick.time <= DOUBLE_CLICK_MS) {
+    if (
+      lastGroupRowClick &&
+      lastGroupRowClick.name === name &&
+      now - lastGroupRowClick.time <= DOUBLE_CLICK_MS
+    ) {
       toggleGroup(name);
       lastGroupRowClick = null;
     } else {
@@ -229,13 +234,33 @@
     const items: ContextMenuItem[] = [];
 
     if (c.state === "running") {
-      items.push({ label: get(t)("action.stop"), icon: stopIcon, onClick: () => onAction(c.id, "stop") });
-      items.push({ label: get(t)("action.restart"), icon: restartIcon, onClick: () => onAction(c.id, "restart") });
-      items.push({ label: get(t)("action.pause"), icon: pauseIcon, onClick: () => onAction(c.id, "pause") });
+      items.push({
+        label: get(t)("action.stop"),
+        icon: stopIcon,
+        onClick: () => onAction(c.id, "stop"),
+      });
+      items.push({
+        label: get(t)("action.restart"),
+        icon: restartIcon,
+        onClick: () => onAction(c.id, "restart"),
+      });
+      items.push({
+        label: get(t)("action.pause"),
+        icon: pauseIcon,
+        onClick: () => onAction(c.id, "pause"),
+      });
     } else if (c.state === "paused") {
-      items.push({ label: get(t)("action.unpause"), icon: playIcon, onClick: () => onAction(c.id, "unpause") });
+      items.push({
+        label: get(t)("action.unpause"),
+        icon: playIcon,
+        onClick: () => onAction(c.id, "unpause"),
+      });
     } else {
-      items.push({ label: get(t)("action.start"), icon: playIcon, onClick: () => onAction(c.id, "start") });
+      items.push({
+        label: get(t)("action.start"),
+        icon: playIcon,
+        onClick: () => onAction(c.id, "start"),
+      });
     }
 
     items.push({
@@ -330,15 +355,30 @@
     </div>
     <div class="row-actions">
       {#if c.state === "running"}
-        <button class="icon-btn" tabindex="-1" title={$t("action.stop")} onclick={(e) => fireAction(e, c.id, "stop")}>
+        <button
+          class="icon-btn"
+          tabindex="-1"
+          title={$t("action.stop")}
+          onclick={(e) => fireAction(e, c.id, "stop")}
+        >
           <Icon svg={stopIcon} size={14} />
         </button>
       {:else}
-        <button class="icon-btn" tabindex="-1" title={$t("action.start")} onclick={(e) => fireAction(e, c.id, "start")}>
+        <button
+          class="icon-btn"
+          tabindex="-1"
+          title={$t("action.start")}
+          onclick={(e) => fireAction(e, c.id, "start")}
+        >
           <Icon svg={playIcon} size={14} />
         </button>
       {/if}
-      <button class="icon-btn" tabindex="-1" title={$t("action.remove")} onclick={(e) => requestRemoveContainer(e, c)}>
+      <button
+        class="icon-btn"
+        tabindex="-1"
+        title={$t("action.remove")}
+        onclick={(e) => requestRemoveContainer(e, c)}
+      >
         <Icon svg={deleteIcon} size={14} />
       </button>
     </div>
@@ -455,7 +495,12 @@
 </MasterList>
 
 {#if contextMenu}
-  <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextMenu.items} onClose={closeContextMenu} />
+  <ContextMenu
+    x={contextMenu.x}
+    y={contextMenu.y}
+    items={contextMenu.items}
+    onClose={closeContextMenu}
+  />
 {/if}
 
 {#if confirmDialog}
@@ -468,7 +513,6 @@
 {/if}
 
 <style>
-
   .section-label {
     font-size: 11px;
     text-transform: uppercase;
@@ -617,5 +661,4 @@
     background: var(--dockl-surface-hover);
     color: var(--dockl-text-primary);
   }
-
 </style>

@@ -104,14 +104,20 @@
 <!-- Anything that moves the anchor out from under the tooltip invalidates its position;
      closing is more honest than leaving it pointing at empty space. Scroll is captured
      since it fires on the scrolling container, not on window. -->
-<svelte:window onkeydown={handleKeydown} onresize={() => onClose?.()} onscrollcapture={() => onClose?.()} />
+<svelte:window
+  onkeydown={handleKeydown}
+  onresize={() => onClose?.()}
+  onscrollcapture={() => onClose?.()}
+/>
 
 <div
   class="tooltip"
   bind:this={tipEl}
   popover="manual"
   role="tooltip"
-  style="left: {pos?.x ?? 0}px; top: {pos?.y ?? 0}px; transform-origin: {GROW_ORIGIN[pos?.side ?? placement]};"
+  style="left: {pos?.x ?? 0}px; top: {pos?.y ?? 0}px; transform-origin: {GROW_ORIGIN[
+    pos?.side ?? placement
+  ]};"
 >
   {label}
 </div>

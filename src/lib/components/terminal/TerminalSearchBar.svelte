@@ -94,7 +94,11 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="search-bar dockl-surface" onkeydown={handleKeydown} onclick={(e) => e.stopPropagation()}>
+<div
+  class="search-bar dockl-surface"
+  onkeydown={handleKeydown}
+  onclick={(e) => e.stopPropagation()}
+>
   <input
     bind:this={inputEl}
     value={query}
@@ -126,7 +130,12 @@
   >
     <Icon svg={chevronDownIcon} size={14} />
   </button>
-  <button class="icon-btn" title={$t("common.close")} aria-label={$t("terminal.search.closeAriaLabel")} onclick={close}>
+  <button
+    class="icon-btn"
+    title={$t("common.close")}
+    aria-label={$t("terminal.search.closeAriaLabel")}
+    onclick={close}
+  >
     <Icon svg={dismissIcon} size={14} />
   </button>
 </div>

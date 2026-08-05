@@ -58,7 +58,8 @@
     { text: "left", label: "左に表示", placement: "left" },
     {
       text: "長いラベル",
-      label: "長いラベルは max-width: 240px で折り返します。サイドバーのように幅の狭い要素でも読めます。",
+      label:
+        "長いラベルは max-width: 240px で折り返します。サイドバーのように幅の狭い要素でも読めます。",
       placement: "right",
     },
   ];
@@ -70,7 +71,11 @@
   function demoLoadingToast(status: "success" | "error") {
     const id = pushToast("処理を実行しています...");
     setTimeout(() => {
-      resolveToast(id, status, status === "success" ? "処理が完了しました" : "処理に失敗しました: sample error");
+      resolveToast(
+        id,
+        status,
+        status === "success" ? "処理が完了しました" : "処理に失敗しました: sample error",
+      );
     }, 1200);
   }
 
@@ -90,7 +95,8 @@
 <PageHeader title="Design Patterns" />
 
 <p class="intro">
-  theme.css のトークンと共通コンポーネントの見本です。dev-design は build 時に自動で除外されるため本番出力には含まれません。
+  theme.css のトークンと共通コンポーネントの見本です。dev-design は build
+  時に自動で除外されるため本番出力には含まれません。
 </p>
 
 <section class="dockl-surface block">
@@ -181,10 +187,14 @@
   <div class="row">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <fluent-button appearance="outline" onclick={() => demoLoadingToast("success")}>成功 (loading→success)</fluent-button>
+    <fluent-button appearance="outline" onclick={() => demoLoadingToast("success")}
+      >成功 (loading→success)</fluent-button
+    >
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <fluent-button appearance="outline" onclick={() => demoLoadingToast("error")}>失敗 (loading→error)</fluent-button>
+    <fluent-button appearance="outline" onclick={() => demoLoadingToast("error")}
+      >失敗 (loading→error)</fluent-button
+    >
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <fluent-button appearance="outline" onclick={() => showToast("success", "即時成功トースト")}>
@@ -192,23 +202,30 @@
     </fluent-button>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <fluent-button appearance="outline" onclick={() => showToast("error", "即時失敗トースト")}>即時失敗</fluent-button>
+    <fluent-button appearance="outline" onclick={() => showToast("error", "即時失敗トースト")}
+      >即時失敗</fluent-button
+    >
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <fluent-button appearance="outline" onclick={demoOutputToast}>出力付き（詳細ボタン表示）</fluent-button>
+    <fluent-button appearance="outline" onclick={demoOutputToast}
+      >出力付き（詳細ボタン表示）</fluent-button
+    >
   </div>
 </section>
 
 <section class="dockl-surface block">
   <h2>ツールチップ (Tooltip)</h2>
-  <p class="note">ホバーまたはキーボードフォーカスで即座に表示。アンカー側の辺から広がる短いアニメーションが付きます。</p>
+  <p class="note">
+    ホバーまたはキーボードフォーカスで即座に表示。アンカー側の辺から広がる短いアニメーションが付きます。
+  </p>
   <div class="row">
     {#each tooltipDemos as demo (demo.text)}
       <button
         class="tooltip-demo"
         onpointerenter={(e) => (tip = { el: e.currentTarget, ...demo })}
         onpointerleave={() => (tip = null)}
-        onfocusin={(e) => e.currentTarget.matches(":focus-visible") && (tip = { el: e.currentTarget, ...demo })}
+        onfocusin={(e) =>
+          e.currentTarget.matches(":focus-visible") && (tip = { el: e.currentTarget, ...demo })}
         onfocusout={() => (tip = null)}
       >
         {demo.text}
@@ -218,7 +235,12 @@
 </section>
 
 {#if tip}
-  <Tooltip anchor={tip.el} label={tip.label} placement={tip.placement} onClose={() => (tip = null)} />
+  <Tooltip
+    anchor={tip.el}
+    label={tip.label}
+    placement={tip.placement}
+    onClose={() => (tip = null)}
+  />
 {/if}
 
 <section class="dockl-surface block">
@@ -226,7 +248,9 @@
   <div class="row">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <fluent-button appearance="outline" onclick={() => (confirmOpen = true)}>確認ダイアログを開く</fluent-button>
+    <fluent-button appearance="outline" onclick={() => (confirmOpen = true)}
+      >確認ダイアログを開く</fluent-button
+    >
   </div>
 </section>
 

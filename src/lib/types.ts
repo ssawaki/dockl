@@ -8,13 +8,7 @@ export interface ContainerSummary {
   labels: Record<string, string>;
 }
 
-export type ContainerActionKind =
-  | "start"
-  | "stop"
-  | "restart"
-  | "remove"
-  | "pause"
-  | "unpause";
+export type ContainerActionKind = "start" | "stop" | "restart" | "remove" | "pause" | "unpause";
 
 export interface ImageSummary {
   id: string;

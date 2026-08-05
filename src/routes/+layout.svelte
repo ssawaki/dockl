@@ -103,7 +103,9 @@
     <SidebarNav />
     <div class="dockl-content">
       {#if gated}
-        <LoadingState message={$connection.status === "starting" ? $t("app.starting") : $t("app.connecting")} />
+        <LoadingState
+          message={$connection.status === "starting" ? $t("app.starting") : $t("app.connecting")}
+        />
       {:else if $connection.status === "failed" && !ALWAYS_AVAILABLE.has($page.url.pathname)}
         <div class="connect-failed">
           <p class="failed-title">{$t("app.connectFailed")}</p>

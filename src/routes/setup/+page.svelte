@@ -66,11 +66,7 @@
       <p class="hint">{$t("setup.noneFoundHint")}</p>
     </div>
   {:else}
-    <div
-      class="distro-list"
-      role="radiogroup"
-      use:rovingFocus={{ selector: "[data-roving-item]" }}
-    >
+    <div class="distro-list" role="radiogroup" use:rovingFocus={{ selector: "[data-roving-item]" }}>
       {#each distros.filter((d) => d.wsl_version === 2) as d (d.name)}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
@@ -84,7 +80,9 @@
         >
           <div class="distro-name">{d.name}</div>
           <div class="distro-meta">
-            <span class="badge" class:running={d.is_running}>{d.is_running ? $t("setup.running") : $t("setup.stopped")}</span>
+            <span class="badge" class:running={d.is_running}
+              >{d.is_running ? $t("setup.running") : $t("setup.stopped")}</span
+            >
             {#if d.is_default}<span class="badge">{$t("setup.default")}</span>{/if}
           </div>
         </div>

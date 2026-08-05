@@ -53,7 +53,11 @@ export async function watchDockerEvents(
  * finishes registering after teardown gets stopped immediately instead of leaking for
  * the rest of the app's lifetime.
  */
-export function refreshOnDockerEvents(isConnected: () => boolean, kinds: DockerEvent["kind"][], refresh: () => void) {
+export function refreshOnDockerEvents(
+  isConnected: () => boolean,
+  kinds: DockerEvent["kind"][],
+  refresh: () => void,
+) {
   $effect(() => {
     if (!isConnected()) return;
 

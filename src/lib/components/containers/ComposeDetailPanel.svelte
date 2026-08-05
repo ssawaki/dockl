@@ -67,7 +67,9 @@
   let workingDir = $derived(containers[0]?.labels["com.docker.compose.project.working_dir"] ?? "");
 
   function relativeConfigFile(file: string): string {
-    return workingDir && file.startsWith(`${workingDir}/`) ? file.slice(workingDir.length + 1) : file;
+    return workingDir && file.startsWith(`${workingDir}/`)
+      ? file.slice(workingDir.length + 1)
+      : file;
   }
 </script>
 
@@ -105,7 +107,11 @@
     {:else}
       <div class="header">
         <h2>{project}</h2>
-        <span class="status-badge" class:running={status === "running"} class:partial={status === "partial"}>
+        <span
+          class="status-badge"
+          class:running={status === "running"}
+          class:partial={status === "partial"}
+        >
           <span class="status-dot"></span>
           {statusLabel}
         </span>

@@ -38,10 +38,20 @@
         </span>
         <span class="toast-message">{toast.message}</span>
         {#if toast.status === "error"}
-          <CopyIconButton value={toast.message} label="toastStack.copyError" iconSize={18} size={28} />
+          <CopyIconButton
+            value={toast.message}
+            label="toastStack.copyError"
+            iconSize={18}
+            size={28}
+          />
         {/if}
         {#if toast.status !== "loading"}
-          <button class="toast-btn" onclick={() => dismissToast(toast.id)} aria-label={$t("common.close")} title={$t("common.close")}>
+          <button
+            class="toast-btn"
+            onclick={() => dismissToast(toast.id)}
+            aria-label={$t("common.close")}
+            title={$t("common.close")}
+          >
             <Icon svg={dismissIcon} size={18} />
           </button>
         {/if}
@@ -50,7 +60,11 @@
         <div class="toast-footer">
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <fluent-button appearance="subtle" size="small" onclick={() => (openOutputToastId = toast.id)}>
+          <fluent-button
+            appearance="subtle"
+            size="small"
+            onclick={() => (openOutputToastId = toast.id)}
+          >
             {$t("toastStack.showDetails")}
           </fluent-button>
         </div>

@@ -77,7 +77,9 @@
     // user can no longer see the whole of. Rendered-ness is checked rather than just
     // existence because a hidden-but-mounted shell session matches the selector too, and
     // that one must not block itself from being reopened.
-    const modals = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'));
+    const modals = Array.from(
+      document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'),
+    );
     if (modals.some((el) => el.getClientRects().length > 0)) return;
     openShell();
   }
@@ -106,7 +108,9 @@
   </button>
   <div class="titlebar-title" data-tauri-drag-region>Dockl</div>
   {#if $connection.distro}
-    <span class="distro-badge dockl-surface" title={$t("titlebar.wslDistro")}>{$connection.distro}</span>
+    <span class="distro-badge dockl-surface" title={$t("titlebar.wslDistro")}
+      >{$connection.distro}</span
+    >
   {/if}
   <button
     class="titlebar-btn titlebar-shell-btn"
@@ -118,13 +122,28 @@
     <Icon svg={terminalIcon} size={16} />
   </button>
   <div class="titlebar-controls">
-    <button class="titlebar-btn" tabindex="-1" onclick={minimize} aria-label={$t("titlebar.minimize")}>
+    <button
+      class="titlebar-btn"
+      tabindex="-1"
+      onclick={minimize}
+      aria-label={$t("titlebar.minimize")}
+    >
       <Icon svg={subtractIcon} size={14} />
     </button>
-    <button class="titlebar-btn" tabindex="-1" onclick={toggleMaximize} aria-label={$t("titlebar.maximize")}>
+    <button
+      class="titlebar-btn"
+      tabindex="-1"
+      onclick={toggleMaximize}
+      aria-label={$t("titlebar.maximize")}
+    >
       <Icon svg={squareIcon} size={12} />
     </button>
-    <button class="titlebar-btn titlebar-close" tabindex="-1" onclick={close} aria-label={$t("common.close")}>
+    <button
+      class="titlebar-btn titlebar-close"
+      tabindex="-1"
+      onclick={close}
+      aria-label={$t("common.close")}
+    >
       <Icon svg={dismissIcon} size={14} />
     </button>
   </div>

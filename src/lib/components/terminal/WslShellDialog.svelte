@@ -184,7 +184,12 @@
   >
     <div class="dialog-header">
       <span class="dialog-title">{displayTitle}</span>
-      <button class="icon-btn" title={$t("common.close")} aria-label={$t("common.close")} onclick={onClose}>
+      <button
+        class="icon-btn"
+        title={$t("common.close")}
+        aria-label={$t("common.close")}
+        onclick={onClose}
+      >
         <Icon svg={dismissIcon} size={16} />
       </button>
     </div>

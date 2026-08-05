@@ -30,7 +30,12 @@
       <span class="dialog-title">{title}</span>
       <div class="dialog-actions">
         <CopyIconButton value={output} iconSize={15} />
-        <button class="icon-btn" title={$t("common.close")} aria-label={$t("common.close")} onclick={onClose}>
+        <button
+          class="icon-btn"
+          title={$t("common.close")}
+          aria-label={$t("common.close")}
+          onclick={onClose}
+        >
           <Icon svg={dismissIcon} size={16} />
         </button>
       </div>

@@ -140,11 +140,19 @@
           <div class="stat-value">{latest.cpuPercent.toFixed(1)}%</div>
           {#if coresForMax !== null}
             <div class="stat-sub">
-              {$t("stats.max", { percent: cpuMaxPercent.toFixed(0), cores: formatCores(coresForMax) })}
+              {$t("stats.max", {
+                percent: cpuMaxPercent.toFixed(0),
+                cores: formatCores(coresForMax),
+              })}
             </div>
           {/if}
           <div class="stat-chart">
-            <Sparkline data={cpuHistory} max={cpuChartMax} color="var(--dockl-accent)" height={72} />
+            <Sparkline
+              data={cpuHistory}
+              max={cpuChartMax}
+              color="var(--dockl-accent)"
+              height={72}
+            />
           </div>
         </div>
 
@@ -170,7 +178,9 @@
 
         <div class="stat-card">
           <div class="stat-label">{$t("stats.networkIO")}</div>
-          <div class="stat-value">↓{formatBytes(latest.netRxBytes)} ↑{formatBytes(latest.netTxBytes)}</div>
+          <div class="stat-value">
+            ↓{formatBytes(latest.netRxBytes)} ↑{formatBytes(latest.netTxBytes)}
+          </div>
         </div>
 
         <div class="stat-card stat-card-wide">

@@ -62,7 +62,11 @@
   // All four rows here (Images/Containers/Local Volumes/Build Cache) can shift from any
   // container/image/volume change, so this listens to all three kinds — `network`
   // events don't affect disk usage, so that one's deliberately left out.
-  refreshOnDockerEvents(() => $connection.status === "connected", ["container", "image", "volume"], refresh);
+  refreshOnDockerEvents(
+    () => $connection.status === "connected",
+    ["container", "image", "volume"],
+    refresh,
+  );
 
   let pruneConfirmOpen = $state(false);
   // Off by default, matching the image/volume prune dialogs: reclaiming cache Docker
@@ -99,7 +103,13 @@
   <PageHeader title={$t("nav.storage")}>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <fluent-button appearance="outline" icon-only title={$t("common.refresh")} aria-label={$t("common.refresh")} onclick={refresh}>
+    <fluent-button
+      appearance="outline"
+      icon-only
+      title={$t("common.refresh")}
+      aria-label={$t("common.refresh")}
+      onclick={refresh}
+    >
       <Icon svg={arrowClockwiseIcon} size={14} />
     </fluent-button>
   </PageHeader>
@@ -190,7 +200,6 @@
 {/if}
 
 <style>
-
   .error-banner {
     padding: 8px 12px;
     color: var(--dockl-danger);

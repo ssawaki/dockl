@@ -23,19 +23,49 @@
 
   let mainItems = $derived([
     { href: resolve("/"), label: $t("nav.containers"), icon: boxIcon, iconActive: boxIconFilled },
-    { href: resolve("/images"), label: $t("nav.images"), icon: imageIcon, iconActive: imageIconFilled },
-    { href: resolve("/volumes"), label: $t("nav.volumes"), icon: hardDriveIcon, iconActive: hardDriveIconFilled },
-    { href: resolve("/networks"), label: $t("nav.networks"), icon: routerIcon, iconActive: routerIconFilled },
-    { href: resolve("/storage"), label: $t("nav.storage"), icon: storageIcon, iconActive: storageIconFilled },
+    {
+      href: resolve("/images"),
+      label: $t("nav.images"),
+      icon: imageIcon,
+      iconActive: imageIconFilled,
+    },
+    {
+      href: resolve("/volumes"),
+      label: $t("nav.volumes"),
+      icon: hardDriveIcon,
+      iconActive: hardDriveIconFilled,
+    },
+    {
+      href: resolve("/networks"),
+      label: $t("nav.networks"),
+      icon: routerIcon,
+      iconActive: routerIconFilled,
+    },
+    {
+      href: resolve("/storage"),
+      label: $t("nav.storage"),
+      icon: storageIcon,
+      iconActive: storageIconFilled,
+    },
   ]);
 
-  let settingsItem = $derived({ href: resolve("/settings"), label: $t("nav.settings"), icon: settingsIcon, iconActive: settingsIconFilled });
+  let settingsItem = $derived({
+    href: resolve("/settings"),
+    label: $t("nav.settings"),
+    icon: settingsIcon,
+    iconActive: settingsIconFilled,
+  });
 
   // Dev-only: links to the design reference page. The whole route is stripped out of
   // production builds (see scripts/build-without-dev-routes.mjs), and `import.meta.env.DEV`
   // is statically replaced with `false` in that build, so this branch — link and all — is
   // dead-code-eliminated from the compiled output too.
-  const devDesignItem = { href: resolve("/dev-design"), label: "Design Patterns", icon: beakerIcon, iconActive: beakerIconFilled };
+  const devDesignItem = {
+    href: resolve("/dev-design"),
+    label: "Design Patterns",
+    icon: beakerIcon,
+    iconActive: beakerIconFilled,
+  };
 
   // Pinned open by the titlebar button (see Titlebar.svelte), which is always available.
   let pinnedExpanded = $derived($sidebarToggleExpanded);
@@ -87,7 +117,8 @@
     onpointerenter={(e) => openTip(e.currentTarget, item.label)}
     onpointerleave={closeTip}
     onpointerdown={closeTip}
-    onfocusin={(e) => e.currentTarget.matches(":focus-visible") && openTip(e.currentTarget, item.label)}
+    onfocusin={(e) =>
+      e.currentTarget.matches(":focus-visible") && openTip(e.currentTarget, item.label)}
     onfocusout={closeTip}
   >
     <span class="sidebar-item-icon">
@@ -113,7 +144,7 @@
     use:rovingFocus={{ selector: "[data-roving-item]" }}
   >
     {#each mainItems as item (item.href)}
-      {#if item.href === "/storage"}
+      {#if item.href === resolve("/storage")}
         <div class="divider"></div>
       {/if}
       {@render navItem(item)}

@@ -66,14 +66,21 @@
   >
     <div class="dialog-header">
       <span class="dialog-title">{$t("tcpEndpoint.title")}</span>
-      <button class="icon-btn" title={$t("common.close")} aria-label={$t("common.close")} onclick={onClose}>
+      <button
+        class="icon-btn"
+        title={$t("common.close")}
+        aria-label={$t("common.close")}
+        onclick={onClose}
+      >
         <Icon svg={dismissIcon} size={16} />
       </button>
     </div>
 
     <div class="dialog-body">
       <p class="section-desc">
-        {$t("tcpEndpoint.description1a")}<code>127.0.0.1:{TCP_BRIDGE_PORT}</code>{$t("tcpEndpoint.description1b")}
+        {$t("tcpEndpoint.description1a")}<code>127.0.0.1:{TCP_BRIDGE_PORT}</code>{$t(
+          "tcpEndpoint.description1b",
+        )}
       </p>
 
       <p class="security-warning">
@@ -84,7 +91,11 @@
       <div class="row">
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <fluent-button appearance="outline" disabled={checkStatus === "checking"} onclick={checkConnection}>
+        <fluent-button
+          appearance="outline"
+          disabled={checkStatus === "checking"}
+          onclick={checkConnection}
+        >
           <span class="btn-content">
             {#if checkStatus === "checking"}
               <fluent-spinner size="tiny"></fluent-spinner>
@@ -96,7 +107,9 @@
           <span class="status-ok">{$t("tcpEndpoint.connectionOk")}</span>
         {:else if checkStatus === "error"}
           <span class="status-error">
-            <CopyableValue value={$t("tcpEndpoint.connectionFailed", { error: checkMessage ?? "" })}>
+            <CopyableValue
+              value={$t("tcpEndpoint.connectionFailed", { error: checkMessage ?? "" })}
+            >
               {$t("tcpEndpoint.connectionFailed", { error: checkMessage ?? "" })}
             </CopyableValue>
           </span>

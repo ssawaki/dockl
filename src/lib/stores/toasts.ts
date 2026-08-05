@@ -22,7 +22,10 @@ const MAX_TOASTS = 5;
 
 /** Tracks each toast's pending auto-dismiss timer so it can be paused (e.g. on hover) and
  *  resumed later without losing track of how much time was left. */
-const timers = new Map<string, { timeoutId: ReturnType<typeof setTimeout>; remaining: number; startedAt: number }>();
+const timers = new Map<
+  string,
+  { timeoutId: ReturnType<typeof setTimeout>; remaining: number; startedAt: number }
+>();
 
 function clearTimer(id: string) {
   const timer = timers.get(id);
@@ -87,13 +90,20 @@ export function pushToast(message: string): string {
  * and — since the user might click it to read *after* the auto-dismiss timer would have
  * fired — keeps the toast on screen until explicitly closed instead of dismissing it.
  */
-export function resolveToast(id: string, status: "success" | "error", message: string, output?: string) {
+export function resolveToast(
+  id: string,
+  status: "success" | "error",
+  message: string,
+  output?: string,
+) {
   if (output) {
     toasts.update((list) => list.map((t) => (t.id === id ? { ...t, status, message, output } : t)));
     return;
   }
   const delay = status === "success" ? 3000 : 6000;
-  toasts.update((list) => list.map((t) => (t.id === id ? { ...t, status, message, duration: delay } : t)));
+  toasts.update((list) =>
+    list.map((t) => (t.id === id ? { ...t, status, message, duration: delay } : t)),
+  );
   scheduleDismiss(id, delay);
 }
 

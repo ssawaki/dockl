@@ -32,7 +32,10 @@
       if (selectedId && !containers.some((c) => c.id === selectedId)) {
         selectedId = null;
       }
-      if (selectedProject && !containers.some((c) => c.labels["com.docker.compose.project"] === selectedProject)) {
+      if (
+        selectedProject &&
+        !containers.some((c) => c.labels["com.docker.compose.project"] === selectedProject)
+      ) {
         selectedProject = null;
       }
     } catch (e) {
@@ -66,11 +69,19 @@
       await refresh();
       resolveToast(toastId, "success", get(t)(`toast.${action}.success` as MessageKey, { name }));
     } catch (e) {
-      resolveToast(toastId, "error", get(t)(`toast.${action}.error` as MessageKey, { name, error: formatError(e) }));
+      resolveToast(
+        toastId,
+        "error",
+        get(t)(`toast.${action}.error` as MessageKey, { name, error: formatError(e) }),
+      );
     }
   }
 
-  async function runComposeAction(project: string, configFiles: string[], action: ComposeActionKind) {
+  async function runComposeAction(
+    project: string,
+    configFiles: string[],
+    action: ComposeActionKind,
+  ) {
     const toastId = pushToast(get(t)(`toast.${action}.pending` as MessageKey, { name: project }));
     try {
       const output = await composeAction(project, configFiles, action);
@@ -144,11 +155,9 @@
 </div>
 
 <style>
-
   .error-banner {
     padding: 8px 12px;
     color: var(--dockl-danger);
     border-color: var(--dockl-danger);
   }
-
 </style>

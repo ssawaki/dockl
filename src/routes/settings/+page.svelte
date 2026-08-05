@@ -3,9 +3,23 @@
   import { onMount } from "svelte";
   import { get } from "svelte/store";
   import { load, type Store } from "@tauri-apps/plugin-store";
-  import { isEnabled as autostartIsEnabled, enable as autostartEnable, disable as autostartDisable } from "@tauri-apps/plugin-autostart";
-  import { setupCurrentDistro, setupConnect, connectTcpBridge, connectDialStdio } from "$lib/ipc/setup";
-  import { ensureConnected, getConnectionMode, persistConnectionMode, type ConnectionMode } from "$lib/connection";
+  import {
+    isEnabled as autostartIsEnabled,
+    enable as autostartEnable,
+    disable as autostartDisable,
+  } from "@tauri-apps/plugin-autostart";
+  import {
+    setupCurrentDistro,
+    setupConnect,
+    connectTcpBridge,
+    connectDialStdio,
+  } from "$lib/ipc/setup";
+  import {
+    ensureConnected,
+    getConnectionMode,
+    persistConnectionMode,
+    type ConnectionMode,
+  } from "$lib/connection";
   import { TCP_BRIDGE_PORT } from "$lib/tcpBridge";
   import { connection } from "$lib/stores/connection";
   import {
@@ -17,7 +31,6 @@
     setSidebarHoverExpand,
     type ThemeMode,
     type WindowMaterial,
-
   } from "$lib/stores/appearance";
   import PageHeader from "$lib/components/layout/PageHeader.svelte";
   import TcpEndpointDialog from "$lib/components/settings/TcpEndpointDialog.svelte";
@@ -145,9 +158,15 @@
     <h2>{$t("settings.language.heading")}</h2>
     <fluent-dropdown style="min-width: 200px" onchange={handleLocaleChange}>
       <fluent-listbox>
-        <fluent-option value="ja" selected={$locale === "ja"}>{$t("settings.language.ja")}</fluent-option>
-        <fluent-option value="ja-en" selected={$locale === "ja-en"}>{$t("settings.language.jaEn")}</fluent-option>
-        <fluent-option value="en" selected={$locale === "en"}>{$t("settings.language.en")}</fluent-option>
+        <fluent-option value="ja" selected={$locale === "ja"}
+          >{$t("settings.language.ja")}</fluent-option
+        >
+        <fluent-option value="ja-en" selected={$locale === "ja-en"}
+          >{$t("settings.language.jaEn")}</fluent-option
+        >
+        <fluent-option value="en" selected={$locale === "en"}
+          >{$t("settings.language.en")}</fluent-option
+        >
       </fluent-listbox>
     </fluent-dropdown>
   </section>
@@ -160,9 +179,15 @@
         <span class="label">{$t("settings.appearance.theme.label")}</span>
         <fluent-dropdown style="min-width: 160px" onchange={handleThemeModeChange}>
           <fluent-listbox>
-            <fluent-option value="system" selected={$themeMode === "system"}>{$t("settings.appearance.theme.system")}</fluent-option>
-            <fluent-option value="light" selected={$themeMode === "light"}>{$t("settings.appearance.theme.light")}</fluent-option>
-            <fluent-option value="dark" selected={$themeMode === "dark"}>{$t("settings.appearance.theme.dark")}</fluent-option>
+            <fluent-option value="system" selected={$themeMode === "system"}
+              >{$t("settings.appearance.theme.system")}</fluent-option
+            >
+            <fluent-option value="light" selected={$themeMode === "light"}
+              >{$t("settings.appearance.theme.light")}</fluent-option
+            >
+            <fluent-option value="dark" selected={$themeMode === "dark"}
+              >{$t("settings.appearance.theme.dark")}</fluent-option
+            >
           </fluent-listbox>
         </fluent-dropdown>
       </div>
@@ -171,9 +196,15 @@
         <span class="label">{$t("settings.appearance.background.label")}</span>
         <fluent-dropdown style="min-width: 160px" onchange={handleWindowMaterialChange}>
           <fluent-listbox>
-            <fluent-option value="mica" selected={$windowMaterial === "mica"}>{$t("settings.appearance.background.mica")}</fluent-option>
-            <fluent-option value="acrylic" selected={$windowMaterial === "acrylic"}>{$t("settings.appearance.background.acrylic")}</fluent-option>
-            <fluent-option value="solid" selected={$windowMaterial === "solid"}>{$t("settings.appearance.background.solid")}</fluent-option>
+            <fluent-option value="mica" selected={$windowMaterial === "mica"}
+              >{$t("settings.appearance.background.mica")}</fluent-option
+            >
+            <fluent-option value="acrylic" selected={$windowMaterial === "acrylic"}
+              >{$t("settings.appearance.background.acrylic")}</fluent-option
+            >
+            <fluent-option value="solid" selected={$windowMaterial === "solid"}
+              >{$t("settings.appearance.background.solid")}</fluent-option
+            >
           </fluent-listbox>
         </fluent-dropdown>
       </div>
@@ -182,13 +213,16 @@
       <label class="row toggle-row">
         <fluent-switch
           checked={$sidebarHoverExpand}
-          onchange={(e: Event) => void setSidebarHoverExpand((e.target as HTMLInputElement).checked)}
+          onchange={(e: Event) =>
+            void setSidebarHoverExpand((e.target as HTMLInputElement).checked)}
         ></fluent-switch>
         <span>{$t("settings.appearance.sidebarHoverExpand")}</span>
       </label>
 
       {#snippet failed(error)}
-        <p class="error-banner dockl-surface">{$t("settings.appearance.error", { error: String(error) })}</p>
+        <p class="error-banner dockl-surface">
+          {$t("settings.appearance.error", { error: String(error) })}
+        </p>
       {/snippet}
     </svelte:boundary>
   </section>
@@ -197,7 +231,11 @@
     <h2>{$t("settings.connection.heading")}</h2>
     <p class="section-desc">{$t("settings.connection.description")}</p>
 
-    <fluent-radio-group bind:this={connectionRadioGroup} orientation="vertical" onchange={handleConnectionModeChange}>
+    <fluent-radio-group
+      bind:this={connectionRadioGroup}
+      orientation="vertical"
+      onchange={handleConnectionModeChange}
+    >
       <!-- svelte-ignore a11y_label_has_associated_control -->
       <label class="mode-option"
         ><fluent-radio value="dial_stdio" disabled={switchingMode}></fluent-radio>
@@ -254,7 +292,9 @@
       <span class="label">{$t("settings.connection.tcpSetupLabel")}</span>
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <fluent-button appearance="outline" onclick={() => (tcpEndpointDialogOpen = true)}>{$t("settings.connection.setupButton")}</fluent-button>
+      <fluent-button appearance="outline" onclick={() => (tcpEndpointDialogOpen = true)}
+        >{$t("settings.connection.setupButton")}</fluent-button
+      >
     </div>
   </section>
 
@@ -275,7 +315,6 @@
       <span>{$t("settings.autostart.toggle")}</span>
     </label>
   </section>
-
 </div>
 
 {#if tcpEndpointDialogOpen}
@@ -363,7 +402,6 @@
     line-height: 1.4;
     color: var(--dockl-text-secondary);
   }
-
 
   .row {
     display: flex;

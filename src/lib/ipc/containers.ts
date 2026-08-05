@@ -5,10 +5,7 @@ export function listContainers(all = true): Promise<ContainerSummary[]> {
   return invoke("list_containers", { all });
 }
 
-export function containerAction(
-  id: string,
-  action: ContainerActionKind,
-): Promise<void> {
+export function containerAction(id: string, action: ContainerActionKind): Promise<void> {
   return invoke("container_action", { id, action });
 }
 

@@ -41,7 +41,8 @@ export const en = {
   "prune.pending": "Pruning unused {resource}...",
   "prune.success": "Pruned unused {resource}",
   "prune.error": "Failed to prune: {error}",
-  "confirmRemove.messageInUse": "Removes “{name}”. This will fail if another container is using it.",
+  "confirmRemove.messageInUse":
+    "Removes “{name}”. This will fail if another container is using it.",
 
   // Shared table column headers (identical wording across resource pages).
   "table.name": "Name",
@@ -49,7 +50,6 @@ export const en = {
   "table.driver": "Driver",
   "table.scope": "Scope",
   "table.size": "Size",
-
 
   "titlebar.wslDistro": "Connected WSL distro",
   "titlebar.openShell": "Open WSL shell",
@@ -108,7 +108,8 @@ export const en = {
   // Translations for Rust-side failures, keyed by `AppError::code` — see
   // `src/lib/errors.ts`. Only the ones a user can act on are here; the rest keep their
   // original text, which is docker's or WSL's own output and not ours to reword.
-  "errors.connectTimeout": "WSL2 stopped responding (no reply within {seconds}s). It may recover on its own — try again in a moment.",
+  "errors.connectTimeout":
+    "WSL2 stopped responding (no reply within {seconds}s). It may recover on its own — try again in a moment.",
   "errors.notConfigured": "Not connected to Docker yet. Complete setup from Settings.",
   "errors.wslUnavailable": "Could not reach WSL2: {detail}",
   "errors.noDistroFound": "No WSL2 distro with Docker was found.",
@@ -175,7 +176,8 @@ export const en = {
   "wslShell.title": "WSL Shell",
 
   "tcpEndpoint.title": "TCP endpoint (Docker Engine API)",
-  "tcpEndpoint.description1a": "The “TCP connection” mode talks to a Docker Engine API–compatible endpoint at ",
+  "tcpEndpoint.description1a":
+    "The “TCP connection” mode talks to a Docker Engine API–compatible endpoint at ",
   "tcpEndpoint.description1b":
     " that you have exposed yourself — Podman's `podman system service`, for instance. Dockl does not open this port for you: the relay process mode reaches the same API at the same measured speed without one, so there is no reason for Dockl to create it.",
   "tcpEndpoint.warning":
@@ -211,7 +213,8 @@ export const en = {
   "volumes.loading": "Loading volumes...",
   "volumes.empty": "No volumes found.",
   "volumes.detail.placeholder": "Select a volume from the list on the left.",
-  "volumes.prune.message": "Prunes volumes not referenced by any container. Their data will be lost.",
+  "volumes.prune.message":
+    "Prunes volumes not referenced by any container. Their data will be lost.",
   "volumes.prune.includeNamed": "Also prune named unused volumes",
 
   "networks.confirmRemove.title": "Remove network",
@@ -234,7 +237,8 @@ export const en = {
   "storage.kind.buildCache": "Build Cache",
   "storage.pruneBuildCache": "Prune build cache",
   "storage.pruneBuildCache.message": "Prunes build cache not used by any image.",
-  "storage.pruneBuildCache.includeReusable": "Also prune cache that could be reused for future builds",
+  "storage.pruneBuildCache.includeReusable":
+    "Also prune cache that could be reused for future builds",
   "storage.pruneBuildCache.pending": "Pruning build cache...",
   "storage.pruneBuildCache.success": "Pruned build cache",
 

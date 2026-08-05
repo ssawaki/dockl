@@ -118,7 +118,13 @@
     </fluent-button>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <fluent-button appearance="outline" icon-only title={$t("common.refresh")} aria-label={$t("common.refresh")} onclick={refresh}>
+    <fluent-button
+      appearance="outline"
+      icon-only
+      title={$t("common.refresh")}
+      aria-label={$t("common.refresh")}
+      onclick={refresh}
+    >
       <Icon svg={arrowClockwiseIcon} size={14} />
     </fluent-button>
   </PageHeader>
@@ -173,7 +179,6 @@
 {/if}
 
 <style>
-
   .checkbox-row {
     display: flex;
     align-items: center;
@@ -205,5 +210,4 @@
     color: var(--dockl-danger);
     border-color: var(--dockl-danger);
   }
-
 </style>

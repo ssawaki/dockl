@@ -33,7 +33,12 @@
   ]);
 </script>
 
-<MasterList {loading} empty={images.length === 0} loadingLabel={$t("images.loading")} emptyLabel={$t("images.empty")}>
+<MasterList
+  {loading}
+  empty={images.length === 0}
+  loadingLabel={$t("images.loading")}
+  emptyLabel={$t("images.empty")}
+>
   {#each sections as section (section.key)}
     {#if section.items.length > 0}
       <div class="section-header">{section.label}</div>
@@ -49,7 +54,9 @@
             <!-- Surfaced here because the row only has room for one name: without it an
                  image with several tags would look like it has exactly one. -->
             {#if image.tags.length > 1}
-              <span class="tag-count">{$t("images.moreTags", { count: String(image.tags.length - 1) })}</span>
+              <span class="tag-count"
+                >{$t("images.moreTags", { count: String(image.tags.length - 1) })}</span
+              >
             {/if}
           {/snippet}
           {#snippet actions()}

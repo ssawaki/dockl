@@ -202,7 +202,9 @@
                     <!-- Registry URL on the public internet, not an app route. `resolve()`
                          throws on anything that isn't an absolute internal pathname. -->
                     <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-                    <a class="ext-link" href={imageUrl} onclick={(e) => openExternal(e, imageUrl)}>{repo}</a>{tag ? `:${tag}` : ""}
+                    <a class="ext-link" href={imageUrl} onclick={(e) => openExternal(e, imageUrl)}
+                      >{repo}</a
+                    >{tag ? `:${tag}` : ""}
                   {:else}
                     {image}
                   {/if}
@@ -215,12 +217,16 @@
             </tr>
             <tr>
               <th>Restart Policy</th>
-              <td><CopyableValue value={detail.restart_policy}>{detail.restart_policy}</CopyableValue></td>
+              <td
+                ><CopyableValue value={detail.restart_policy}>{detail.restart_policy}</CopyableValue
+                ></td
+              >
             </tr>
             {#if detail.ip_address}
               <tr>
                 <th>IP</th>
-                <td><CopyableValue value={detail.ip_address}>{detail.ip_address}</CopyableValue></td>
+                <td><CopyableValue value={detail.ip_address}>{detail.ip_address}</CopyableValue></td
+                >
               </tr>
             {/if}
           </tbody>
@@ -243,7 +249,9 @@
                         <!-- Points at the published host port (http://localhost:…), not an
                              app route, so `resolve()` would throw on it. -->
                         <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-                        <a class="ext-link" href={p.url} onclick={(e) => openHostPort(e, p.url!)}>{p.address}</a>
+                        <a class="ext-link" href={p.url} onclick={(e) => openHostPort(e, p.url!)}
+                          >{p.address}</a
+                        >
                       {:else}
                         {p.address}
                       {/if}
@@ -292,7 +300,11 @@
         {/if}
       {:else if activeTab === "stats" && containerId}
         {#key containerId}
-          <ContainerStats {containerId} cpuLimitCores={detail?.cpu_limit_cores ?? null} {isRunning} />
+          <ContainerStats
+            {containerId}
+            cpuLimitCores={detail?.cpu_limit_cores ?? null}
+            {isRunning}
+          />
         {/key}
       {:else if activeTab === "logs" && containerId}
         {#key containerId}
@@ -307,7 +319,11 @@
           <div class="terminal-unavailable">
             <Icon svg={dismissCircleIcon} size={20} />
             <p>{$t("containers.detail.terminalUnavailable")}</p>
-            <p class="hint-sub">{$t("containers.detail.currentStatus", { status: detail?.status ?? $t("common.unknown") })}</p>
+            <p class="hint-sub">
+              {$t("containers.detail.currentStatus", {
+                status: detail?.status ?? $t("common.unknown"),
+              })}
+            </p>
           </div>
         {/if}
       {:else if activeTab !== "info"}
@@ -474,5 +490,4 @@
   .ext-link:hover {
     text-decoration: underline;
   }
-
 </style>

@@ -37,14 +37,14 @@ export const jaEn: Record<MessageKey, string> = {
   "prune.pending": "未使用の{resource}を Prune しています...",
   "prune.success": "未使用の{resource}を Prune しました",
   "prune.error": "Prune に失敗しました: {error}",
-  "confirmRemove.messageInUse": "「{name}」を Remove します。他のコンテナで使用中の場合は Remove に失敗します。",
+  "confirmRemove.messageInUse":
+    "「{name}」を Remove します。他のコンテナで使用中の場合は Remove に失敗します。",
 
   "table.name": "名前",
   "table.composeProject": "Composeプロジェクト",
   "table.driver": "ドライバー",
   "table.scope": "スコープ",
   "table.size": "サイズ",
-
 
   "titlebar.wslDistro": "接続中のWSLディストロ",
   "titlebar.openShell": "WSLシェルを開く",
@@ -89,14 +89,16 @@ export const jaEn: Record<MessageKey, string> = {
   "toast.down.success": "{name} を Down しました",
   "toast.down.error": "{name} の Down に失敗しました: {error}",
 
-  "errors.connectTimeout": "WSL2が応答しなくなりました（{seconds}秒以内に応答がありません）。時間を置くと復帰することがあります。少し待ってから再試行してください。",
+  "errors.connectTimeout":
+    "WSL2が応答しなくなりました（{seconds}秒以内に応答がありません）。時間を置くと復帰することがあります。少し待ってから再試行してください。",
   "errors.notConfigured": "Dockerに接続していません。設定画面からセットアップを完了してください。",
   "errors.wslUnavailable": "WSL2に接続できませんでした: {detail}",
   "errors.noDistroFound": "Dockerが入ったWSL2ディストロが見つかりませんでした。",
 
   "errors.noDistroSelected": "接続先が不明です",
   "errors.connectionSwitchFailed": "接続方式の切り替えに失敗しました: {error}",
-  "errors.notConnectedSetupRequired": "接続情報が保存されていません。初回セットアップを完了してください。",
+  "errors.notConnectedSetupRequired":
+    "接続情報が保存されていません。初回セットアップを完了してください。",
   "errors.copyFailed": "コピーに失敗しました: {error}",
 
   "toastStack.copyError": "エラーをコピー",
@@ -156,7 +158,8 @@ export const jaEn: Record<MessageKey, string> = {
   "wslShell.title": "WSLシェル",
 
   "tcpEndpoint.title": "TCPエンドポイント（Docker Engine API）",
-  "tcpEndpoint.description1a": "「TCP接続」は、ご自身で公開したDocker Engine API互換のエンドポイント（",
+  "tcpEndpoint.description1a":
+    "「TCP接続」は、ご自身で公開したDocker Engine API互換のエンドポイント（",
   "tcpEndpoint.description1b":
     "）に接続する方式です。Podmanの`podman system service`などが該当します。Docklはこのポートを開きません — 中継プロセス方式ならポートを開かずに同じAPIへ同じ速度で接続できるため、Dockl側で開く理由がないからです。",
   "tcpEndpoint.warning":
@@ -190,7 +193,8 @@ export const jaEn: Record<MessageKey, string> = {
   "volumes.loading": "ボリュームを読み込み中...",
   "volumes.empty": "ボリュームが見つかりません。",
   "volumes.detail.placeholder": "左の一覧からボリュームを選択してください。",
-  "volumes.prune.message": "どのコンテナからも参照されていないボリュームを Prune します。中のデータは失われます。",
+  "volumes.prune.message":
+    "どのコンテナからも参照されていないボリュームを Prune します。中のデータは失われます。",
   "volumes.prune.includeNamed": "名前付きの未使用ボリュームも Prune する",
 
   "networks.confirmRemove.title": "ネットワークを Remove",
@@ -212,7 +216,8 @@ export const jaEn: Record<MessageKey, string> = {
   "storage.kind.localVolumes": "ボリューム",
   "storage.kind.buildCache": "ビルドキャッシュ",
   "storage.pruneBuildCache": "ビルドキャッシュを Prune",
-  "storage.pruneBuildCache.message": "どのイメージにも使われていないビルドキャッシュを Prune します。",
+  "storage.pruneBuildCache.message":
+    "どのイメージにも使われていないビルドキャッシュを Prune します。",
   "storage.pruneBuildCache.includeReusable": "今後のビルドで再利用されるキャッシュも Prune する",
   "storage.pruneBuildCache.pending": "ビルドキャッシュを Prune しています...",
   "storage.pruneBuildCache.success": "ビルドキャッシュを Prune しました",
@@ -264,7 +269,8 @@ export const jaEn: Record<MessageKey, string> = {
   "setup.lead": "Dockerを実行しているWSL2ディストロを選択してください。",
   "setup.detecting": "WSLディストロを検出中...",
   "setup.noneFound": "WSL2のディストロが見つかりませんでした。",
-  "setup.noneFoundHint": "WSL2をインストールし、Dockerをセットアップした上でもう一度お試しください。",
+  "setup.noneFoundHint":
+    "WSL2をインストールし、Dockerをセットアップした上でもう一度お試しください。",
   "setup.running": "起動中",
   "setup.stopped": "停止中",
   "setup.default": "既定",

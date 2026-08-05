@@ -7,4 +7,8 @@ node_modules/
 # Rust side is formatted by rustfmt
 src-tauri/
 
+# Prose stays hand-formatted: reflowing the Japanese tables in PLAN.md and
+# local/plans/ pads every cell out past 200 columns and makes them awkward to edit.
+*.md
+
 package-lock.json
