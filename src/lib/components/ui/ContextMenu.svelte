@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
+  import Icon from "$lib/components/ui/Icon.svelte";
   import { rovingFocus, focusFirstRovingItem } from "$lib/actions/rovingFocus";
 
   export interface ContextMenuItem {
@@ -7,6 +7,8 @@
     icon: string;
     onClick: () => void;
     danger?: boolean;
+    /** Renders a divider directly above this item. */
+    separator?: boolean;
   }
 
   let {
@@ -74,8 +76,10 @@
   use:focusFirstRovingItem={"[data-roving-item]"}
 >
   {#each items as item (item.label)}
+    {#if item.separator}
+      <div class="menu-separator" role="separator"></div>
+    {/if}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="menu-item"
       class:danger={item.danger}
@@ -121,5 +125,11 @@
 
   .menu-item.danger {
     color: var(--dockl-danger);
+  }
+
+  .menu-separator {
+    height: 1px;
+    margin: 4px 6px;
+    background: var(--dockl-border);
   }
 </style>

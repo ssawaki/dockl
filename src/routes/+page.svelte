@@ -1,31 +1,29 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { goto } from "$app/navigation";
+  import { formatError } from "$lib/errors";
   import { listContainers, containerAction } from "$lib/ipc/containers";
   import { composeAction, type ComposeActionKind } from "$lib/ipc/compose";
-  import { setupCurrentDistro } from "$lib/ipc/setup";
-  import { ensureConnected } from "$lib/connection";
-  import ContainerMasterList from "$lib/components/ContainerMasterList.svelte";
-  import ContainerDetailPanel from "$lib/components/ContainerDetailPanel.svelte";
-  import LoadingState from "$lib/components/LoadingState.svelte";
+  import ContainerMasterList from "$lib/components/containers/ContainerMasterList.svelte";
+  import ContainerDetailPanel from "$lib/components/containers/ContainerDetailPanel.svelte";
+  import ComposeDetailPanel from "$lib/components/containers/ComposeDetailPanel.svelte";
+  import MasterDetail from "$lib/components/layout/MasterDetail.svelte";
+  import PageHeader from "$lib/components/layout/PageHeader.svelte";
   import { pushToast, resolveToast } from "$lib/stores/toasts";
-  import type { ContainerSummary } from "$lib/types";
-
-  const actionLabels: Record<string, string> = {
-    start: "開始",
-    stop: "停止",
-    restart: "再起動",
-    remove: "削除",
-    pause: "一時停止",
-    unpause: "再開",
-  };
+  import { connection } from "$lib/stores/connection";
+  import { refreshOnDockerEvents } from "$lib/dockerEvents.svelte";
+  import type { ContainerSummary, ContainerActionKind, DetailTabId } from "$lib/types";
+  import { get } from "svelte/store";
+  import { t, type MessageKey } from "$lib/stores/i18n";
 
   let containers = $state<ContainerSummary[]>([]);
   let selectedId = $state<string | null>(null);
-  let distro = $state<string | null>(null);
+  let selectedProject = $state<string | null>(null);
   let errorMessage = $state<string | null>(null);
   let loading = $state(true);
-  let pollHandle: ReturnType<typeof setInterval> | undefined;
+  // Lifted here (rather than kept as local state in each detail panel) so it survives
+  // switching between a container and a Compose project — the two panels are siblings
+  // toggled by `{#if selectedProject}`, so only one is ever mounted at a time and either
+  // one's own local state would reset every time the other is shown instead.
+  let activeTab = $state<DetailTabId>("info");
 
   async function refresh() {
     try {
@@ -34,118 +32,118 @@
       if (selectedId && !containers.some((c) => c.id === selectedId)) {
         selectedId = null;
       }
-    } catch (e) {
-      errorMessage = String(e);
-    }
-  }
-
-  async function connectAndLoad() {
-    loading = true;
-    try {
-      const connected = await ensureConnected();
-      if (!connected) {
-        await goto("/setup");
-        return;
+      if (selectedProject && !containers.some((c) => c.labels["com.docker.compose.project"] === selectedProject)) {
+        selectedProject = null;
       }
-      distro = await setupCurrentDistro();
-      await refresh();
     } catch (e) {
-      errorMessage = String(e);
+      errorMessage = formatError(e);
     } finally {
       loading = false;
     }
   }
 
-  async function runAction(id: string, action: Parameters<typeof containerAction>[1]) {
-    const label = actionLabels[action] ?? action;
+  let selectedProjectContainers = $derived(
+    selectedProject
+      ? containers.filter((c) => c.labels["com.docker.compose.project"] === selectedProject)
+      : [],
+  );
+  let selectedProjectConfigFiles = $derived(
+    (selectedProjectContainers[0]?.labels["com.docker.compose.project.config_files"] ?? "")
+      .split(",")
+      .filter((f) => f.length > 0),
+  );
+
+  function selectContainerFromProject(id: string) {
+    selectedProject = null;
+    selectedId = id;
+  }
+
+  async function runAction(id: string, action: ContainerActionKind) {
     const name = containers.find((c) => c.id === id)?.names.join(", ") ?? id.slice(0, 12);
-    const toastId = pushToast(`${name} を${label}しています...`);
+    const toastId = pushToast(get(t)(`toast.${action}.pending` as MessageKey, { name }));
     try {
       await containerAction(id, action);
       await refresh();
-      resolveToast(toastId, "success", `${name} を${label}しました`);
+      resolveToast(toastId, "success", get(t)(`toast.${action}.success` as MessageKey, { name }));
     } catch (e) {
-      resolveToast(toastId, "error", `${name} の${label}に失敗しました: ${String(e)}`);
+      resolveToast(toastId, "error", get(t)(`toast.${action}.error` as MessageKey, { name, error: formatError(e) }));
     }
   }
-
-  const composeActionLabels: Record<ComposeActionKind, string> = {
-    up: "開始",
-    stop: "停止",
-    down: "削除",
-  };
 
   async function runComposeAction(project: string, configFiles: string[], action: ComposeActionKind) {
-    const label = composeActionLabels[action];
-    const toastId = pushToast(`${project} を${label}しています...`);
+    const toastId = pushToast(get(t)(`toast.${action}.pending` as MessageKey, { name: project }));
     try {
-      await composeAction(project, configFiles, action);
+      const output = await composeAction(project, configFiles, action);
       await refresh();
-      resolveToast(toastId, "success", `${project} を${label}しました`);
+      resolveToast(
+        toastId,
+        "success",
+        get(t)(`toast.${action}.success` as MessageKey, { name: project }),
+        output.trim() ? output : undefined,
+      );
     } catch (e) {
-      resolveToast(toastId, "error", `${project} の${label}に失敗しました: ${String(e)}`);
+      resolveToast(
+        toastId,
+        "error",
+        get(t)(`toast.${action}.error` as MessageKey, { name: project, error: formatError(e) }),
+        formatError(e),
+      );
     }
   }
 
-  onMount(() => {
-    connectAndLoad();
-    pollHandle = setInterval(refresh, 5000);
-  });
-
-  onDestroy(() => {
-    if (pollHandle) clearInterval(pollHandle);
-  });
+  // The root layout runs the actual WSL2/Docker connection check once at app startup
+  // (which also starts the backend's `docker events` subscription); this just does the
+  // initial load and starts reacting to it once that's confirmed (handles both order —
+  // mounting after $connection is already "connected", or while it's still
+  // "connecting"). Event-driven rather than polled: a container start/stop/die/etc.
+  // refreshes this list within `watchDockerEvents`'s debounce window instead of up to
+  // 5s late, without spending anything while nothing's actually changing.
+  refreshOnDockerEvents(() => $connection.status === "connected", ["container"], refresh);
 </script>
 
-<div class="containers-view">
-  <div class="header-row">
-    <h1>コンテナ</h1>
-    {#if distro}
-      <span class="distro-badge dockl-surface">{distro}</span>
-    {/if}
-  </div>
+<div class="page-view">
+  <PageHeader title={$t("nav.containers")} />
 
   {#if errorMessage}
     <div class="error-banner dockl-surface">{errorMessage}</div>
   {/if}
 
-  {#if loading}
-    <LoadingState message="WSL2に接続中..." />
-  {:else}
-    <div class="master-detail">
-      <ContainerMasterList {containers} bind:selectedId onAction={runAction} onComposeAction={runComposeAction} />
-      <ContainerDetailPanel containerId={selectedId} />
-    </div>
-  {/if}
+  <!-- The spinner lives inside the list rather than replacing this whole area: only the
+       list is waiting on anything, and blanking the detail panel too would throw away
+       what the user was reading. The app-wide "connecting to WSL2" state still covers
+       everything (see +layout.svelte) — there, nothing can be shown yet. -->
+  <MasterDetail>
+    {#snippet list()}
+      <ContainerMasterList
+        {containers}
+        {loading}
+        bind:selectedId
+        bind:selectedProject
+        onAction={runAction}
+        onComposeAction={runComposeAction}
+      />
+    {/snippet}
+    {#snippet detail()}
+      {#if selectedProject}
+        <ComposeDetailPanel
+          project={selectedProject}
+          containers={selectedProjectContainers}
+          configFiles={selectedProjectConfigFiles}
+          onSelectContainer={selectContainerFromProject}
+          bind:activeTab
+        />
+      {:else}
+        <ContainerDetailPanel
+          containerId={selectedId}
+          liveState={containers.find((c) => c.id === selectedId)?.state ?? null}
+          bind:activeTab
+        />
+      {/if}
+    {/snippet}
+  </MasterDetail>
 </div>
 
 <style>
-  .containers-view {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    height: 100%;
-    min-height: 0;
-  }
-
-  .header-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-shrink: 0;
-  }
-
-  h1 {
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0;
-  }
-
-  .distro-badge {
-    padding: 2px 10px;
-    font-size: 12px;
-    color: var(--dockl-text-secondary);
-  }
 
   .error-banner {
     padding: 8px 12px;
@@ -153,10 +151,4 @@
     border-color: var(--dockl-danger);
   }
 
-  .master-detail {
-    display: flex;
-    gap: 12px;
-    flex: 1;
-    min-height: 0;
-  }
 </style>

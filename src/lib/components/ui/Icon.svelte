@@ -11,6 +11,9 @@
 </script>
 
 <span class="icon" style={size ? `width:${size}px;height:${size}px` : undefined}>
+  <!-- `svg` is always an icon file bundled at build time via `?raw`, never anything
+       derived from Docker output or user input, so there is no injection vector here. -->
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
   {@html markup}
 </span>
 

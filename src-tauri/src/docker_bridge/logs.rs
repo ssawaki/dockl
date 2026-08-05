@@ -31,8 +31,7 @@ impl LogStreamManager {
         &self,
         app: AppHandle,
         distro: String,
-        container_id: String,
-        tail: u32,
+        docker_args: Vec<String>,
     ) -> Result<String, AppError> {
         let stream_id = Uuid::new_v4().to_string();
 
@@ -41,17 +40,11 @@ impl LogStreamManager {
         {
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
-        cmd.args([
-            "-d",
-            &distro,
-            "--",
-            "docker",
-            "logs",
-            "-f",
-            "--tail",
-            &tail.to_string(),
-            &container_id,
-        ]);
+        cmd.arg("-d")
+            .arg(&distro)
+            .arg("--")
+            .arg("docker")
+            .args(&docker_args);
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
         cmd.kill_on_drop(true);
@@ -106,19 +99,50 @@ impl LogStreamManager {
     }
 }
 
+/// How long a batch waits for more lines to arrive before it's flushed, once the first
+/// line in it shows up. Bounds latency for a chatty container (a burst gets coalesced
+/// into one emit instead of one per line) without making a single log line feel delayed.
+const BATCH_WINDOW: Duration = Duration::from_millis(15);
+/// Caps a single batch/emit regardless of how long lines keep arriving within the
+/// window, so an extremely chatty container can't grow one emit unboundedly.
+const MAX_BATCH_LINES: usize = 500;
+
 fn spawn_line_forwarder<R>(app: AppHandle, event: String, reader: R)
 where
     R: tokio::io::AsyncRead + Unpin + Send + 'static,
 {
+    // Split into a reader task (pushes lines into a channel as soon as each is available)
+    // and a batching task (drains the channel, coalescing whatever arrived within
+    // `BATCH_WINDOW` into one `app.emit` instead of one per line) — a chatty container
+    // (e.g. a dev server logging every request) would otherwise cost one IPC
+    // serialize/dispatch cycle per line.
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+
     tokio::spawn(async move {
         let mut lines = BufReader::new(reader).lines();
-        loop {
-            match lines.next_line().await {
-                Ok(Some(line)) => {
-                    let _ = app.emit(&event, line);
-                }
-                _ => break,
+        while let Ok(Some(line)) = lines.next_line().await {
+            if tx.send(line).is_err() {
+                break; // batching task ended (e.g. app shutting down)
             }
+        }
+    });
+
+    tokio::spawn(async move {
+        loop {
+            let Some(first) = rx.recv().await else { break };
+            let mut batch = vec![first];
+            let deadline = tokio::time::Instant::now() + BATCH_WINDOW;
+            while batch.len() < MAX_BATCH_LINES {
+                let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+                if remaining.is_zero() {
+                    break;
+                }
+                match tokio::time::timeout(remaining, rx.recv()).await {
+                    Ok(Some(line)) => batch.push(line),
+                    _ => break,
+                }
+            }
+            let _ = app.emit(&event, batch);
         }
     });
 }

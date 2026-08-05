@@ -1,11 +1,23 @@
+pub mod appearance_cmds;
 pub mod compose_cmds;
 pub mod containers_cmds;
+pub mod images_cmds;
 pub mod logs_cmds;
+pub mod networks_cmds;
 pub mod pty_cmds;
 pub mod setup_cmds;
+pub mod stats_cmds;
+pub mod system_cmds;
+pub mod volumes_cmds;
 
+pub use appearance_cmds::*;
 pub use compose_cmds::*;
 pub use containers_cmds::*;
+pub use images_cmds::*;
 pub use logs_cmds::*;
+pub use networks_cmds::*;
 pub use pty_cmds::*;
 pub use setup_cmds::*;
+pub use stats_cmds::*;
+pub use system_cmds::*;
+pub use volumes_cmds::*;

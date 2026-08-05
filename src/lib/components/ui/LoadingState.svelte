@@ -1,10 +1,13 @@
 <script lang="ts">
-  let { message = "読み込み中..." }: { message?: string } = $props();
+  import { t } from "$lib/stores/i18n";
+
+  let { message }: { message?: string } = $props();
+  let displayMessage = $derived(message ?? $t("common.loading"));
 </script>
 
 <div class="loading-state">
   <fluent-spinner size="medium"></fluent-spinner>
-  <p>{message}</p>
+  <p>{displayMessage}</p>
 </div>
 
 <style>

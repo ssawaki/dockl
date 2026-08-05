@@ -6,9 +6,10 @@ use crate::wsl;
 /// actions this always shells out regardless of the active `ConnectionMode` (see
 /// PLAN.md's Compose section).
 ///
-/// Mirrors the per-container start/stop/remove actions: "up" starts (creating services
-/// if needed), "stop" stops without removing anything, "down" removes the project's
-/// containers and network (like `rm -f` does for a single container).
+/// Mirrors the per-container start/stop/restart/remove actions: "up" starts (creating
+/// services if needed), "stop" stops without removing anything, "restart" restarts the
+/// project's containers in place, and "down" removes the project's containers and
+/// network (like `rm -f` does for a single container).
 pub async fn compose_action(
     distro: &str,
     project: &str,
@@ -27,6 +28,7 @@ pub async fn compose_action(
             args.push("-d".into());
         }
         "stop" => args.push("stop".into()),
+        "restart" => args.push("restart".into()),
         "down" => args.push("down".into()),
         other => {
             return Err(AppError::CommandFailed(format!(
@@ -36,5 +38,5 @@ pub async fn compose_action(
     }
 
     let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
-    wsl::run_docker(distro, &arg_refs).await
+    wsl::run_docker_verbose(distro, &arg_refs).await
 }

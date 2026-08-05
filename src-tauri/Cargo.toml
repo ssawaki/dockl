@@ -29,6 +29,15 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "time", "sync"] }
 bollard = "0.17"
+reqwest = { version = "0.13", default-features = false, features = ["json", "query"] }
+# The dial-stdio transport speaks HTTP/1.1 directly over a child process's stdio, which
+# `reqwest` can't do (it only dials TCP/TLS). These are already in the lock file via
+# `reqwest` itself, so naming them here pins no new versions.
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes = "1"
+serde_urlencoded = "0.7"
 portable-pty = "0.8"
 thiserror = "1"
 anyhow = "1"

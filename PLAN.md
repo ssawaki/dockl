@@ -27,6 +27,16 @@ WSL2側Dockerとの通信方式を1つに固定せず、`ConnectionMode`とし�
 
 **開発環境確認済み**: WSL2 Ubuntu (running, systemd有効, Docker 29.6.1, docker.sock存在, ユーザーは`docker`グループ所属、`sudo -n`パスワードレス、`cargo`/`gcc`インストール済み)。この環境確認により、ブリッジバイナイはWindows側からのクロスコンパイル不要で、**WSL内で直接`cargo build --release`**すればよいことが判明（当初計画の「クロスコンパイル」リスクは解消）。
 
+> **実装状況の補足（2026-07-31時点、上記の表との差分）**
+>
+> 上の表の「プロキシブリッジ（`dockl-bridged`常駐、デフォルト推奨）」は開発途中で**作らないと判断し、実装していない**。理由は、自前バイナリのビルド・配備・systemd常駐・トークン認証を丸ごと持つコストに対して、`wsl.exe`都度実行との体感速度差が実測ベースで見合わなかったため。
+>
+> 現在実装されている接続モードは実質2つ:
+> - **ブリッジなし（CLIシェルアウト）**: `ShellOutConnection`（`docker_bridge/shell_out.rs`）。表の記載通り。
+> - **TCP接続（Docker Engine API）**: `BollardConnection`（`docker_bridge/bollard_conn.rs`）。ユーザーが`Settings`の「TCP接続のセットアップ」から`dockerd`を`tcp://127.0.0.1:2375`で待受させる（手動コマンド or PTY経由の自動登録）。実装はbollardの型定義（`bollard::models::*`）は流用しつつ、通信自体は**`reqwest::Client`を1つ使い回すプーリング接続**で行っている。bollardの`Docker::connect_with_http`は内部で`pool_max_idle_per_host(0)`（コネクション使い回し無し）を強制しており、これがWSL2境界を跨ぐ都度リクエストで実測上ボトルネックになったため。
+>
+> **`DockerEventManager`（`docker_bridge/events.rs`）について**: 上記どちらの接続モードとも独立した、別系統の仕組み。`docker events --format '{{json .}}'`を**アプリ起動中ずっと`wsl.exe`経由で張りっぱなし**にし、コンテナ/イメージ/ボリューム/ネットワークの変化をTauriイベント`docker:event`としてpush配信する（フロントは`watchDockerEvents`で購読、デバウンス付き）。これにより一覧画面のポーリングを全廃した（`ContainerStats`のCPU/メモリ数値だけは、Docker側に対応するイベントが存在しないため引き続きポーリング）。接続モードをTCPに切り替えていても、このイベント購読自体は常に`wsl.exe`経由のまま——理由は「都度リクエストの起動コスト」を避けたいTCP化の動機と違い、こちらはアプリ起動時に1プロセスだけ張る話なので、都度起動のオーバーヘッド自体が最初から存在しないため。
+
 ---
 
 ## アーキテクチャ概要
@@ -155,7 +165,7 @@ dockl/
 - 対話アタッチ: `start_attach_session`→`pty:{id}:data`イベント, `pty_write`, `pty_resize`, `pty_close`
 - Compose: `list_compose_projects`（ラベルから高速導出）, `compose_action`→ストリーミング出力
 - 設定/ウィンドウ: `get_settings`/`update_settings`, `window_minimize`/`window_toggle_maximize`/`window_close`, `connection:status`イベント
-- 全体: バックグラウンドでbollardの`events`ストリームを購読し`docker:event`として配信 → UIの自動更新とクラッシュ通知に利用
+- 全体: バックグラウンドで`DockerEventManager`が`wsl.exe -- docker events`を購読し`docker:event`として配信（接続モードによらず常時`wsl.exe`経由、詳細は上の「実装状況の補足」参照）→ 各一覧画面の自動更新に利用（クラッシュ通知は未実装）
 
 ---
 

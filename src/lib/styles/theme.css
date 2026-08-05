@@ -1,7 +1,16 @@
 /*
  * Fluent 2 inspired design tokens. Kept intentionally transparent/translucent so the
- * Windows 11 Mica backdrop applied via window-vibrancy (see src-tauri/src/lib.rs)
- * shows through underneath the WebView content.
+ * Windows 11 Mica/Acrylic backdrop applied via window-vibrancy (see
+ * src-tauri/src/appearance.rs) shows through underneath the WebView content — except in
+ * "solid" material mode, where `--dockl-solid-bg` is painted opaquely instead (see the
+ * `[data-material="solid"]` rule below).
+ *
+ * Light/dark is *not* driven by `@media (prefers-color-scheme)` here — the app supports
+ * a manual override (Settings' 外観 section) in addition to following the OS, so
+ * `src/lib/stores/appearance.ts` resolves "system/light/dark" down to one boolean itself
+ * and writes it as `data-theme` on `<html>`, once at startup and again on every change
+ * (including the OS setting changing, while still in "system" mode). Plain :root below
+ * is therefore the light theme's values; dark just overrides via the attribute.
  */
 :root {
   color-scheme: light;
@@ -11,11 +20,29 @@
   --dockl-text-primary: #1b1a19;
   --dockl-text-secondary: #605e5c;
   --dockl-surface: rgba(255, 255, 255, 0.6);
-  --dockl-surface-hover: rgba(255, 255, 255, 0.8);
+  /* Dark-tinted rather than white: this surface is already near-white, so a *whiter*
+     white hover (the original approach here) reads as barely-there — matches how
+     Windows 11's own native light-theme hover states are dark-tinted overlays, not
+     lighter ones. */
+  --dockl-surface-hover: rgba(0, 0, 0, 0.06);
+  /* A more visually distinct hover fill for controls that need to stand out even more
+     (e.g. the Compose accordion toggle, nested inside a row that's already hovered). */
+  --dockl-surface-hover-strong: rgba(0, 0, 0, 0.1);
+  /* Accent-tinted rather than another grey: selection has to stay distinguishable from
+     hover, and on a list you can be hovering one row while another is selected. */
+  --dockl-surface-selected: rgba(15, 108, 189, 0.12);
   --dockl-border: rgba(0, 0, 0, 0.08);
   --dockl-titlebar: rgba(255, 255, 255, 0.35);
+  /* Same hue as --dockl-titlebar but less translucent, for surfaces that overlay other
+     page content and need to read clearly over it while still letting some of the
+     Mica/Acrylic backdrop show through — e.g. the sidebar's hover-expanded rail. */
+  --dockl-titlebar-strong: rgba(255, 255, 255, 0.9);
+  /* Same hue as --dockl-titlebar but fully opaque, for overlays that sit on top of other
+     page content (not just the Mica/Acrylic window backdrop) and need to fully hide it. */
+  --dockl-titlebar-opaque: rgb(255, 255, 255);
   --dockl-danger: #c42b1c;
   --dockl-success: #0f7b0f;
+  --dockl-warning: #9d5d00;
   --dockl-radius: 8px;
   --dockl-font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   --dockl-scrollbar-thumb: rgba(0, 0, 0, 0.25);
@@ -24,21 +51,28 @@
   /* Solid (non-Mica-blended) background for floating overlays like context menus,
      where content behind them showing through would hurt readability. */
   --dockl-menu-bg: #faf9f8;
+  /* The opaque page background used in "solid" material mode (no Mica/Acrylic). */
+  --dockl-solid-bg: #f3f2f1;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --dockl-text-primary: #f3f2f1;
-    --dockl-text-secondary: #c8c6c4;
-    --dockl-surface: rgba(32, 32, 32, 0.55);
-    --dockl-surface-hover: rgba(45, 45, 45, 0.7);
-    --dockl-border: rgba(255, 255, 255, 0.08);
-    --dockl-titlebar: rgba(20, 20, 20, 0.35);
-    --dockl-scrollbar-thumb: rgba(255, 255, 255, 0.25);
-    --dockl-scrollbar-thumb-hover: rgba(255, 255, 255, 0.4);
-    --dockl-menu-bg: #292929;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --dockl-text-primary: #f3f2f1;
+  --dockl-text-secondary: #c8c6c4;
+  --dockl-surface: rgba(32, 32, 32, 0.55);
+  --dockl-surface-hover: rgba(45, 45, 45, 0.7);
+  --dockl-surface-hover-strong: rgba(60, 60, 60, 0.92);
+  /* Lifted from the light theme's 12% — the same tint over a dark surface reads as
+     almost nothing, so it needs more of it to stay visible. */
+  --dockl-surface-selected: rgba(74, 158, 227, 0.22);
+  --dockl-border: rgba(255, 255, 255, 0.08);
+  --dockl-titlebar: rgba(20, 20, 20, 0.35);
+  --dockl-titlebar-strong: rgba(20, 20, 20, 0.9);
+  --dockl-titlebar-opaque: rgb(20, 20, 20);
+  --dockl-scrollbar-thumb: rgba(255, 255, 255, 0.25);
+  --dockl-scrollbar-thumb-hover: rgba(255, 255, 255, 0.4);
+  --dockl-menu-bg: #292929;
+  --dockl-solid-bg: #202020;
 }
 
 html,
@@ -47,6 +81,23 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+}
+
+/* "solid" material mode has no native blur behind the window to show through, so every
+   surface that's normally translucent (to blend with Mica/Acrylic) needs to become
+   fully opaque instead — not just the page background, but the titlebar and every
+   `.dockl-surface`-using panel too, or they'd still show whatever's behind the window
+   through their own transparency even with an opaque body underneath. */
+:root[data-material="solid"] {
+  --dockl-surface: var(--dockl-solid-bg);
+  --dockl-titlebar: var(--dockl-solid-bg);
+  --dockl-titlebar-strong: var(--dockl-solid-bg);
+  --dockl-titlebar-opaque: var(--dockl-solid-bg);
+}
+
+:root[data-material="solid"] html,
+:root[data-material="solid"] body {
+  background: var(--dockl-solid-bg);
 }
 
 * {
@@ -82,7 +133,10 @@ textarea {
 
 /* Shared focus ring for custom (non-native) interactive elements — list rows, menu
    items, tabs, cards — that manage their own keyboard navigation via the
-   `rovingFocus` action instead of being native <button>/<a> elements. */
+   `rovingFocus` action instead of being native <button>/<a> elements.
+
+   Inset by its own width so it reads as an edge on the element rather than something
+   floating around it, and so a scrolling list can't clip it at the padding edge. */
 [data-roving-item]:focus-visible {
   outline: 2px solid var(--dockl-accent);
   outline-offset: -2px;
@@ -95,15 +149,54 @@ textarea {
 }
 
 .dockl-content {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   overflow: auto;
   padding: 16px 20px;
+}
+
+/* Root of a page that fills the content area — a header above something that takes the
+   rest (a master/detail pair, a table).
+
+   `flex: 1` rather than `height: 100%`: `.dockl-content` is a stretched flex item, so its
+   height is a *used* value rather than a specified one, and a percentage resolved against
+   it collapses back to the content's own height. That's what left the master/detail block
+   ending partway down the window with dead space beneath it. Growing as a flex child
+   needs no definite parent height at all.
+
+   `min-height: 0` so a long list scrolls inside its own pane instead of stretching this
+   past the window — flex items refuse to shrink below their content without it. */
+.page-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
 }
 
 .dockl-surface {
   background: var(--dockl-surface);
   border: 1px solid var(--dockl-border);
   border-radius: var(--dockl-radius);
+}
+
+/* Headings inside a DetailPanel. Global rather than per-panel because every resource's
+   detail pane uses them and they must not drift apart — each one styling its own <h2>
+   is how four panels end up with four slightly different title sizes. */
+.detail-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  /* Long registry-qualified names and mount points wrap rather than widening the panel. */
+  word-break: break-all;
+}
+
+.detail-subhead {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dockl-text-secondary);
 }
 
 /* WebView2 is Chromium-based, so `color-scheme` above handles native dark-mode
@@ -134,4 +227,13 @@ textarea {
    with the browser's default (opaque, theme-mismatched) fill. */
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* xterm.js's own stylesheet hardcodes this element to opaque black ("required for the
+   scrollbar to appear fully opaque on OS X") — that's independent of and overrides
+   XtermController's `theme.background`/`allowTransparency`, which only affect the
+   canvas painted inside it. `!important` is needed since xterm.css loads after this
+   file and this rule has no config knob to disable it otherwise. */
+.xterm .xterm-viewport {
+  background-color: transparent !important;
 }

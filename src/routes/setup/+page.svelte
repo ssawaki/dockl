@@ -1,10 +1,14 @@
 <script lang="ts">
+  import { formatError } from "$lib/errors";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { setupListDistros, setupConnect } from "$lib/ipc/setup";
   import { persistConnectedDistro } from "$lib/connection";
-  import LoadingState from "$lib/components/LoadingState.svelte";
+  import { connection } from "$lib/stores/connection";
+  import LoadingState from "$lib/components/ui/LoadingState.svelte";
   import { rovingFocus } from "$lib/actions/rovingFocus";
+  import { t } from "$lib/stores/i18n";
   import type { DistroInfo } from "$lib/types";
 
   let distros = $state<DistroInfo[]>([]);
@@ -19,7 +23,7 @@
       const wsl2 = distros.filter((d) => d.wsl_version === 2);
       selected = (wsl2.find((d) => d.is_default) ?? wsl2[0])?.name ?? null;
     } catch (e) {
-      errorMessage = String(e);
+      errorMessage = formatError(e);
     } finally {
       loading = false;
     }
@@ -32,9 +36,14 @@
     try {
       await setupConnect(selected);
       await persistConnectedDistro(selected);
-      goto("/");
+      // The root layout only checks the connection once at app startup — completing
+      // setup here is the other way a fresh connection is established, so it needs to
+      // update the same shared store or every page's `$connection.status === "connected"`
+      // guard would wait forever.
+      connection.set({ status: "connected", distro: selected });
+      goto(resolve("/"));
     } catch (e) {
-      errorMessage = String(e);
+      errorMessage = formatError(e);
     } finally {
       connecting = false;
     }
@@ -42,19 +51,19 @@
 </script>
 
 <div class="setup-view">
-  <h1>ようこそ</h1>
-  <p class="lead">Dockerを実行しているWSL2ディストロを選択してください。</p>
+  <h1>{$t("setup.welcome")}</h1>
+  <p class="lead">{$t("setup.lead")}</p>
 
   {#if errorMessage}
     <div class="error-banner dockl-surface">{errorMessage}</div>
   {/if}
 
   {#if loading}
-    <LoadingState message="WSLディストロを検出中..." />
+    <LoadingState message={$t("setup.detecting")} />
   {:else if distros.filter((d) => d.wsl_version === 2).length === 0}
     <div class="dockl-surface empty-state">
-      <p>WSL2のディストロが見つかりませんでした。</p>
-      <p class="hint">WSL2をインストールし、Dockerをセットアップした上でもう一度お試しください。</p>
+      <p>{$t("setup.noneFound")}</p>
+      <p class="hint">{$t("setup.noneFoundHint")}</p>
     </div>
   {:else}
     <div
@@ -64,7 +73,6 @@
     >
       {#each distros.filter((d) => d.wsl_version === 2) as d (d.name)}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           class="distro-card dockl-surface"
           class:selected={selected === d.name}
@@ -76,8 +84,8 @@
         >
           <div class="distro-name">{d.name}</div>
           <div class="distro-meta">
-            <span class="badge" class:running={d.is_running}>{d.is_running ? "起動中" : "停止中"}</span>
-            {#if d.is_default}<span class="badge">既定</span>{/if}
+            <span class="badge" class:running={d.is_running}>{d.is_running ? $t("setup.running") : $t("setup.stopped")}</span>
+            {#if d.is_default}<span class="badge">{$t("setup.default")}</span>{/if}
           </div>
         </div>
       {/each}
@@ -85,12 +93,12 @@
 
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <fluent-button appearance="accent" disabled={!selected || connecting} onclick={connect}>
+    <fluent-button appearance="primary" disabled={!selected || connecting} onclick={connect}>
       <span class="btn-content">
         {#if connecting}
           <fluent-spinner size="tiny"></fluent-spinner>
         {/if}
-        {connecting ? "接続中..." : "接続する"}
+        {connecting ? $t("common.connecting") : $t("setup.connect")}
       </span>
     </fluent-button>
   {/if}

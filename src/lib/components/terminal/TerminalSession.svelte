@@ -1,23 +1,36 @@
 <script lang="ts">
+  import { formatError } from "$lib/errors";
   import { onDestroy } from "svelte";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { startAttachSession, ptyWrite, ptyResize, ptyClose } from "$lib/ipc/pty";
   import { XtermController } from "$lib/xterm/XtermController";
-  import Icon from "$lib/components/Icon.svelte";
+  import Icon from "$lib/components/ui/Icon.svelte";
+  import TerminalSearchBar from "$lib/components/terminal/TerminalSearchBar.svelte";
+  import { t } from "$lib/stores/i18n";
   import dismissCircleIcon from "@fluentui/svg-icons/icons/dismiss_circle_16_regular.svg?raw";
 
+  // The parent wraps us in `{#key containerId}`, so one component instance only ever
+  // handles a single containerId for its whole lifetime (mount → destroy), rather than
+  // being reused across container switches. That's what makes the plain "start once on
+  // mount" shape below correct/sufficient.
   let { containerId }: { containerId: string } = $props();
 
   let ended = $state(false);
   let errorMessage = $state<string | null>(null);
+  let searchOpen = $state(false);
 
   const controller = new XtermController({ interactive: true });
+  controller.onSearchRequested(() => (searchOpen = true));
 
   let sessionId: string | null = null;
   let unlistenData: UnlistenFn | null = null;
   let unlistenExit: UnlistenFn | null = null;
-  let disposeOnData: (() => void) | null = null;
-  let disposeOnResize: (() => void) | null = null;
+
+  // Set in onDestroy — see LogViewer.svelte's `destroyed` for why this is needed: a
+  // `startSession` call still in flight at teardown must not adopt its session
+  // afterwards, or it leaks an interactive `wsl.exe`/PTY child process that nothing can
+  // close from the UI anymore.
+  let destroyed = false;
 
   async function stopCurrentSession() {
     unlistenData?.();
@@ -36,42 +49,59 @@
   }
 
   async function startSession(id: string) {
-    await stopCurrentSession();
     controller.clear();
     ended = false;
     errorMessage = null;
 
+    let newSessionId: string;
     try {
-      const newSessionId = await startAttachSession(id, controller.cols, controller.rows);
-      sessionId = newSessionId;
-      unlistenData = await listen<string>(`pty:${newSessionId}:data`, (event) => {
-        controller.write(event.payload);
-      });
-      unlistenExit = await listen(`pty:${newSessionId}:exit`, () => {
-        ended = true;
-      });
+      newSessionId = await startAttachSession(id, controller.cols, controller.rows);
     } catch (e) {
-      errorMessage = String(e);
+      if (!destroyed) errorMessage = formatError(e);
+      return;
     }
+
+    if (destroyed) {
+      void ptyClose(newSessionId);
+      return;
+    }
+    sessionId = newSessionId;
+
+    const dataUnlisten = await listen<string>(`pty:${newSessionId}:data`, (event) => {
+      controller.write(event.payload);
+    });
+    const exitUnlisten = await listen(`pty:${newSessionId}:exit`, () => {
+      ended = true;
+    });
+
+    if (destroyed) {
+      dataUnlisten();
+      exitUnlisten();
+      void ptyClose(newSessionId);
+      return;
+    }
+    unlistenData = dataUnlisten;
+    unlistenExit = exitUnlisten;
   }
 
   function mountTerminal(el: HTMLDivElement) {
-    controller.mount(el);
-
-    disposeOnData = controller.onData((data) => {
+    controller.onData((data) => {
       if (sessionId) void ptyWrite(sessionId, data);
-    }).dispose;
+    });
 
-    disposeOnResize = controller.onResize(({ cols, rows }) => {
+    controller.onResize(({ cols, rows }) => {
       if (sessionId) void ptyResize(sessionId, cols, rows);
-    }).dispose;
+    });
 
-    void startSession(containerId);
+    // Waits for the initial fit so the PTY (and full-screen apps like vim that read its
+    // size once at startup) gets the real panel dimensions instead of xterm's 80x24
+    // default — starting at the wrong size, with nothing to correct it until the next
+    // resize, is what made vim render so badly broken.
+    void controller.mount(el).then(() => startSession(containerId));
   }
 
   onDestroy(() => {
-    disposeOnData?.();
-    disposeOnResize?.();
+    destroyed = true;
     void stopCurrentSession();
     controller.dispose();
   });
@@ -83,10 +113,13 @@
   {:else if ended}
     <div class="term-banner">
       <Icon svg={dismissCircleIcon} size={14} />
-      <span>セッションが終了しました</span>
+      <span>{$t("terminal.sessionEnded")}</span>
     </div>
   {/if}
   <div class="term-host-outer">
+    {#if searchOpen}
+      <TerminalSearchBar {controller} onClose={() => (searchOpen = false)} />
+    {/if}
     <div class="term-host" use:mountTerminal></div>
   </div>
 </div>
@@ -117,6 +150,7 @@
   /* See LogViewer.svelte for why the padding lives on the outer element rather than
      directly on `.term-host` (the one xterm's FitAddon measures). */
   .term-host-outer {
+    position: relative;
     flex: 1;
     min-height: 0;
     padding: 12px;
