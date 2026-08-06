@@ -8,7 +8,11 @@ use crate::state::AppState;
 pub async fn list_networks(state: State<'_, AppState>) -> Result<Vec<NetworkSummary>, AppError> {
     let guard = state.connection.read().await;
     let connection = guard.as_ref().ok_or(AppError::NotConfigured)?;
-    connection.list_networks().await
+    let mut networks = connection.list_networks().await?;
+    // Same as volumes: no ordering guarantee from Docker, so the list reshuffled on every
+    // refresh. Sorted here to keep the two backends consistent with each other.
+    networks.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(networks)
 }
 
 #[tauri::command]

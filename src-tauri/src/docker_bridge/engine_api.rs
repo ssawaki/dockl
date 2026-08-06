@@ -475,7 +475,9 @@ fn container_summary_from_bollard(c: models::ContainerSummary) -> ContainerSumma
         state: c.state.unwrap_or_default(),
         status: c.status.unwrap_or_default(),
         ports: format_ports(&c.ports.unwrap_or_default()),
-        labels: c.labels.unwrap_or_default(),
+        // Collected into the summary's `BTreeMap`: the API client hands these over as a
+        // `HashMap`, whose per-instance iteration order is exactly what this avoids.
+        labels: c.labels.unwrap_or_default().into_iter().collect(),
     }
 }
 
@@ -579,7 +581,7 @@ impl DockerConnection for EngineApiConnection {
             ip_address,
             ports,
             mounts,
-            labels: config.labels.unwrap_or_default(),
+            labels: config.labels.unwrap_or_default().into_iter().collect(),
             cpu_limit_cores: cpu_limit_cores(&inspect_host_config),
             restart_policy: restart_policy_label(&inspect_host_config),
         })

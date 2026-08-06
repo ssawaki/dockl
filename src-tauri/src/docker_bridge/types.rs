@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContainerSummary {
@@ -11,7 +11,12 @@ pub struct ContainerSummary {
     /// Human-readable status, e.g. "Up 3 hours".
     pub status: String,
     pub ports: String,
-    pub labels: HashMap<String, String>,
+    /// `BTreeMap`, not `HashMap`, for the same reason `sort_port_forwards` exists: a
+    /// `HashMap` iterates in a different order per instance, so serializing one hands the
+    /// frontend a fresh order on every call and the detail panel's Labels table visibly
+    /// reshuffles between refreshes. Sorting by key is also just the useful order to read
+    /// them in, since Compose's own `com.docker.compose.*` labels then group together.
+    pub labels: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -486,7 +491,8 @@ pub struct ContainerDetail {
     pub ip_address: Option<String>,
     pub ports: Vec<PortForward>,
     pub mounts: Vec<MountInfo>,
-    pub labels: HashMap<String, String>,
+    /// Ordered by key — see `ContainerSummary::labels` for why this isn't a `HashMap`.
+    pub labels: BTreeMap<String, String>,
     /// Number of CPU cores this container is limited to, or `None` if it isn't limited
     /// (in which case the caller falls back to however many cores the host has).
     pub cpu_limit_cores: Option<f64>,
@@ -569,7 +575,7 @@ pub struct InspectConfig {
     #[serde(rename = "Image")]
     pub image: String,
     #[serde(rename = "Labels")]
-    pub labels: Option<HashMap<String, String>>,
+    pub labels: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Debug, Deserialize)]
