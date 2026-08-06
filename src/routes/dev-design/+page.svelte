@@ -6,6 +6,7 @@
    * physically removed before `vite build` runs (see scripts/build-without-dev-routes.mjs)
    * so none of this — markup, icons, or code — ends up in the Tauri production bundle.
    */
+  import { resolve } from "$app/paths";
   import PageHeader from "$lib/components/layout/PageHeader.svelte";
   import Icon from "$lib/components/ui/Icon.svelte";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
@@ -254,6 +255,19 @@
   </div>
 </section>
 
+<!-- The sidebar hides its dev link while a dev route is open, so that screenshots taken
+     from /dev-capture don't include it — which leaves this page as the way to reach it. -->
+<section class="dockl-surface block">
+  <h2>キャプチャ用画面</h2>
+  <p class="sample-secondary">
+    README 用のスクリーンショットを撮るための、固定データのコンテナ一覧。実際の ContainerMasterList
+    / ContainerDetailPanel を使っているので、見た目は本物と同じ。
+  </p>
+  <div class="row">
+    <a class="capture-link" href={resolve("/dev-capture")}>/dev-capture を開く</a>
+  </div>
+</section>
+
 {#if confirmOpen}
   <ConfirmDialog
     title="サンプルの削除"
@@ -304,6 +318,11 @@
     gap: 10px;
     flex-wrap: wrap;
     margin-bottom: 10px;
+  }
+
+  .capture-link {
+    font-size: 13px;
+    color: var(--dockl-link);
   }
 
   .row:last-child {

@@ -37,9 +37,13 @@
   // reconnect button live, so gating it behind a working connection means the one screen
   // that could fix a bad connection is unreachable exactly when it's needed.
   const ALWAYS_AVAILABLE = new Set(["/settings", "/setup"]);
+  // Dev routes are exempt too: they render fixed data and never touch Docker, so gating
+  // them behind a connection would only ever hide them behind a spinner. Stripped from
+  // production builds, so this can't affect a shipped app.
   let gated = $derived(
     ($connection.status === "connecting" || $connection.status === "starting") &&
-      !ALWAYS_AVAILABLE.has($page.url.pathname),
+      !ALWAYS_AVAILABLE.has($page.url.pathname) &&
+      !(import.meta.env.DEV && $page.url.pathname.startsWith("/dev-")),
   );
 
   // Runs once for the app's whole lifetime (this layout instance persists across

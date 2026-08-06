@@ -151,7 +151,9 @@
       {@render navItem(item)}
     {/each}
     <div class="spacer"></div>
-    {#if import.meta.env.DEV}
+    <!-- Hidden while a dev route is open so it stays out of the screenshots taken from
+         /dev-capture. Those pages are reached by typing the URL anyway. -->
+    {#if import.meta.env.DEV && !$page.url.pathname.startsWith("/dev-")}
       {@render navItem(devDesignItem)}
     {/if}
     {@render navItem(settingsItem)}

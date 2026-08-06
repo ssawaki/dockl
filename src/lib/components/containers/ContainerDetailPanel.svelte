@@ -37,12 +37,20 @@
     liveState,
     activeTab = $bindable(),
     refreshToken = 0,
+    detailOverride = null,
   }: {
     containerId: string | null;
     liveState: string | null;
     activeTab: DetailTabId;
     /** Bumped by the page when the user asks for a refresh; see the effect below. */
     refreshToken?: number;
+    /**
+     * Renders this instead of calling `inspect_container`. Only routes/dev-capture passes
+     * it, to put the panel on screen with fixed data for documentation screenshots —
+     * `src/routes/dev-*` is stripped from production builds, so nothing ships that can
+     * reach this.
+     */
+    detailOverride?: ContainerDetail | null;
   } = $props();
 
   let detail = $state<ContainerDetail | null>(null);
@@ -91,6 +99,11 @@
   // per intermediate selection — each an `inspect_container` call (a `wsl.exe` spawn in
   // shell-out mode) — even though only the final selection's result ever gets shown.
   $effect(() => {
+    if (detailOverride) {
+      detail = detailOverride;
+      loading = false;
+      return;
+    }
     if (!containerId) {
       detail = null;
       return;
