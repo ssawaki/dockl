@@ -12,7 +12,7 @@
     "check:all": "lefthook run check",
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write .",
-    "prepare": "lefthook install",
+    "prepare": "lefthook install && git config --local blame.ignoreRevsFile .git-blame-ignore-revs",
     "tauri": "tauri"
   },
   "license": "MIT",

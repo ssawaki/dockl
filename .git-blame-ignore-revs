@@ -1,0 +1,15 @@
+# Commits that only reformatted code, skipped by `git blame` so it keeps pointing at
+# whoever actually wrote a line instead of at the run that reindented it.
+#
+# Enabled by `git config --local blame.ignoreRevsFile .git-blame-ignore-revs`, which npm's
+# `prepare` script runs. `--local` is the default, but it's spelled out there so a script
+# that runs on every `npm install` can't be misread as touching global git config.
+# GitHub reads this file by name on its own.
+#
+# Full SHAs are required — git rejects abbreviated ones here.
+
+# Apply Prettier across the codebase
+23c476d92b7ad853c2f4d396f1c87cf441d27a7a
+
+# Apply rustfmt across src-tauri
+1442b6334c6369060f6b2bb6e943767d552eca1a
