@@ -144,7 +144,7 @@
 
 <div class="detail-panel dockl-surface">
   {#if !containerId}
-    <div class="placeholder">{$t("containers.detail.placeholder")}</div>
+    <div class="detail-placeholder">{$t("containers.detail.placeholder")}</div>
   {:else}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
@@ -344,14 +344,6 @@
     flex-direction: column;
     min-width: 0;
     overflow: hidden;
-  }
-
-  .placeholder {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--dockl-text-secondary);
   }
 
   .terminal-unavailable {

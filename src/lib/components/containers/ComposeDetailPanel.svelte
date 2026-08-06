@@ -99,7 +99,7 @@
 
   <div class="tab-content" class:flush={activeTab === "logs"}>
     {#if disabledTabs.has(activeTab)}
-      <div class="placeholder">{$t("containers.detail.placeholder")}</div>
+      <div class="detail-placeholder">{$t("containers.detail.placeholder")}</div>
     {:else if activeTab === "logs"}
       {#key project}
         <LogViewer {project} {configFiles} isRunning={runningCount > 0} />
@@ -229,14 +229,6 @@
   .tab-content.flush {
     overflow: hidden;
     padding: 0;
-  }
-
-  .placeholder {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--dockl-text-secondary);
   }
 
   .header {

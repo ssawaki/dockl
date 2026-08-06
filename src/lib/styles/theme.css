@@ -199,6 +199,29 @@ textarea {
   color: var(--dockl-text-secondary);
 }
 
+/* The "nothing selected yet" message a detail pane shows beside its master list. Same
+   reasoning as .detail-title, and the same drift it guards against: the container and
+   Compose panes can't use the shared DetailPanel component (they carry their own tab
+   strip above the body), so each was styling this itself and the three drifted apart:
+   DetailPanel pinned the message to 12px while the other two inherited the body size.
+   Deliberately no `font-size` here, so it keeps inheriting — that's the larger of the
+   two and what the container pane already looked like.
+
+   `flex: 1` and `height: 100%` are both needed because the two parents differ: under a
+   panel root (a flex column) the former stretches it, while the Compose pane puts its
+   message inside `.tab-content`, which is `flex: 1; overflow: auto` and not itself a flex
+   container — there `flex: 1` is inert and the height is what does the work. */
+.detail-placeholder {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--dockl-text-secondary);
+  text-align: center;
+}
+
 /* WebView2 is Chromium-based, so `color-scheme` above handles native dark-mode
    colors, but we also thin the scrollbar down to something closer to Windows 11's
    own overlay scrollbars instead of the chunky classic default. */
