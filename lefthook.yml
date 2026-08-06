@@ -1,5 +1,8 @@
-# Git hooks. Run `npx lefthook install` after cloning (npm's `prepare` script does it
-# automatically on `npm install`).
+# Git hooks, plus one named group that isn't a hook (`check`) — lefthook will run any
+# group by name, so it doubles as the task runner for things that need both toolchains.
+#
+# Run `npx lefthook install` after cloning (npm's `prepare` script does it automatically
+# on `npm install`).
 #
 # Formatting and linting only. The type checks are deliberately left out: `svelte-check`
 # takes ~17s and can't be narrowed to the files being committed, and a cold `cargo check`
@@ -31,3 +34,19 @@ pre-commit:
       glob: "*.rs"
       run: rustfmt --edition 2021 {staged_files}
       stage_fixed: true
+
+# Not a Git hook — invoked by hand via `npm run check:all`. The two type checks the
+# pre-commit hook deliberately leaves out, in one command.
+#
+# Running them in parallel saves less than it sounds: svelte-check takes ~17s against
+# cargo check's ~4s when its cache is warm, so the wall clock is svelte-check's either
+# way. It pays off after a dependency change, when a cold cargo check runs past a minute
+# and svelte-check rides along inside it for free. The real reason to have this is one
+# command instead of two, with a summary saying which side failed.
+check:
+  parallel: true
+  commands:
+    svelte:
+      run: npm run check
+    cargo:
+      run: cargo check --manifest-path src-tauri/Cargo.toml
