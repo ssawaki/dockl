@@ -1,6 +1,14 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
+  /**
+   * A page's title row, with optional action buttons trailing it.
+   *
+   * Those actions are kept out of the tab order (each carries `tabindex="-1"`): tabbing
+   * through a page is meant to run nav rail → list → detail, and a header button sitting
+   * in between turns that into a detour past controls nobody was reaching for. They stay
+   * clickable, and destructive ones go through a confirm dialog anyway.
+   */
   let { title, children }: { title: string; children?: Snippet } = $props();
 </script>
 

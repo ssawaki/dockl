@@ -3,6 +3,7 @@
   import { listNetworks, removeNetwork, pruneNetworks } from "$lib/ipc/networks";
   import { connection } from "$lib/stores/connection";
   import { refreshOnDockerEvents } from "$lib/dockerEvents.svelte";
+  import { refreshOnF5 } from "$lib/shortcuts.svelte";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
   import Icon from "$lib/components/ui/Icon.svelte";
   import PageHeader from "$lib/components/layout/PageHeader.svelte";
@@ -41,6 +42,7 @@
   // this just loads this page's own data once that's confirmed, then reacts to
   // `network` events (create/destroy) instead of polling.
   refreshOnDockerEvents(() => $connection.status === "connected", ["network"], refresh);
+  refreshOnF5(refresh);
 
   let confirmTarget = $state<NetworkSummary | null>(null);
 
@@ -95,7 +97,7 @@
   <PageHeader title={$t("nav.networks")}>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <fluent-button appearance="outline" disabled={pruning} onclick={requestPrune}>
+    <fluent-button appearance="outline" tabindex="-1" disabled={pruning} onclick={requestPrune}>
       <span class="btn-content">
         {#if pruning}
           <fluent-spinner size="tiny"></fluent-spinner>
@@ -110,6 +112,7 @@
     <fluent-button
       appearance="outline"
       icon-only
+      tabindex="-1"
       title={$t("common.refresh")}
       aria-label={$t("common.refresh")}
       onclick={refresh}

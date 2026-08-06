@@ -10,6 +10,7 @@
   import { pushToast, resolveToast } from "$lib/stores/toasts";
   import { connection } from "$lib/stores/connection";
   import { refreshOnDockerEvents } from "$lib/dockerEvents.svelte";
+  import { refreshOnF5 } from "$lib/shortcuts.svelte";
   import type { ContainerSummary, ContainerActionKind, DetailTabId } from "$lib/types";
   import { get } from "svelte/store";
   import { t, type MessageKey } from "$lib/stores/i18n";
@@ -110,6 +111,7 @@
   // refreshes this list within `watchDockerEvents`'s debounce window instead of up to
   // 5s late, without spending anything while nothing's actually changing.
   refreshOnDockerEvents(() => $connection.status === "connected", ["container"], refresh);
+  refreshOnF5(refresh);
 </script>
 
 <div class="page-view">
