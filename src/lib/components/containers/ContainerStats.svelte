@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatError } from "$lib/errors";
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, untrack } from "svelte";
   import { getContainerStats, getHostCpuCount, getContainerDiskUsage } from "$lib/ipc/stats";
   import {
     parseStatsLine,
@@ -10,7 +10,7 @@
     type ContainerStatsPoint,
     type DiskUsage,
   } from "$lib/dockerStats";
-  import LoadingState from "$lib/components/ui/LoadingState.svelte";
+  import Skeleton from "$lib/components/ui/Skeleton.svelte";
   import Sparkline from "$lib/components/ui/Sparkline.svelte";
   import Icon from "$lib/components/ui/Icon.svelte";
   import { t } from "$lib/stores/i18n";
@@ -23,7 +23,19 @@
     containerId,
     cpuLimitCores,
     isRunning,
-  }: { containerId: string; cpuLimitCores: number | null; isRunning: boolean } = $props();
+    active = true,
+  }: {
+    containerId: string;
+    cpuLimitCores: number | null;
+    isRunning: boolean;
+    /**
+     * Whether the Stats tab is the one on screen. The panel keeps this component mounted
+     * across tab switches so `history` survives, and gates polling on this instead —
+     * a `docker stats` call costs about 1.8s of daemon time and (shelling out) a
+     * `wsl.exe` spawn every 2s, which is not something to leave running out of view.
+     */
+    active?: boolean;
+  } = $props();
 
   const HISTORY_LIMIT = 60;
   const POLL_INTERVAL_MS = 2000;
@@ -36,6 +48,11 @@
   // of subscribing to an event stream.
   let pollHandle: ReturnType<typeof setTimeout> | undefined;
   let destroyed = false;
+  // Bumped whenever polling should stop (tab hidden, container gone, teardown). A call
+  // already in flight can't be cancelled — it just checks the generation it started under
+  // and drops its result if that has moved on, so a sample arriving after the user left
+  // the tab can't append itself or schedule another round.
+  let pollGeneration = 0;
 
   // If the container has no `--cpus`/quota/cpuset limit, fall back to however many
   // cores the daemon itself sees — an unlimited container can use all of them.
@@ -73,35 +90,55 @@
   /// transport (~0.8s more when shelling out). On a fixed interval those calls would
   /// overlap and pile up, and an older sample completing after a newer one would append
   /// out of order, making the sparkline run backwards. Chaining guarantees one in flight.
-  async function poll() {
+  async function poll(generation: number) {
+    const stale = () => destroyed || generation !== pollGeneration;
     try {
       const line = await getContainerStats(containerId);
-      if (destroyed) return;
+      if (stale()) return;
       const point = parseStatsLine(line);
       if (point) {
         errorMessage = null;
         history = [...history.slice(-(HISTORY_LIMIT - 1)), point];
       }
     } catch (e) {
-      if (destroyed) return;
+      if (stale()) return;
       // Most commonly this means the container stopped between polls — not worth
       // retrying, so stop and surface it rather than polling a dead container forever.
       errorMessage = formatError(e);
       return;
     }
-    if (!destroyed) pollHandle = setTimeout(poll, POLL_INTERVAL_MS);
+    if (!stale()) pollHandle = setTimeout(() => poll(generation), POLL_INTERVAL_MS);
   }
 
   onMount(() => {
     void loadDiskUsage();
-    // CPU/memory/IO/PIDs all come from `docker stats`, which only works for a running
-    // container — skip polling it entirely rather than hitting (and displaying) the
-    // same "container is not running" error on every 2s tick.
-    if (isRunning) {
+  });
+
+  // Runs while the tab is on screen, stops when it isn't — but `history` is left alone,
+  // which is the whole point of the panel keeping this mounted: coming back shows the
+  // chart that was already there instead of starting over from an empty one.
+  //
+  // CPU/memory/IO/PIDs all come from `docker stats`, which only works for a running
+  // container, so a stopped one is never polled rather than surfacing the same "container
+  // is not running" error every 2s.
+  //
+  // Everything inside is untracked so only `active` and `isRunning` can restart polling;
+  // otherwise a fresh `cpuLimitCores` from a re-inspect would tear down and restart a
+  // perfectly healthy poll loop.
+  $effect(() => {
+    if (!active || !isRunning) return;
+    const generation = ++pollGeneration;
+    untrack(() => {
       void loadHostCpuCountIfNeeded();
       // `poll` schedules its own successor, so there's no interval to start here.
-      void poll();
-    }
+      void poll(generation);
+    });
+
+    return () => {
+      pollGeneration++;
+      if (pollHandle) clearTimeout(pollHandle);
+      pollHandle = undefined;
+    };
   });
 
   onDestroy(() => {
@@ -119,6 +156,34 @@
   let cpuMaxPercent = $derived(coresForMax !== null ? coresForMax * 100 : 100);
   let cpuChartMax = $derived(Math.max(cpuMaxPercent, ...cpuHistory));
 </script>
+
+<!-- Each placeholder goes inside the very element its text would occupy, so the row is
+     sized by that element's own font-size and line-height instead of a guessed pixel
+     height. Only the widths are chosen here, roughly matching the text they stand in for.
+
+     The CPU card always gets its `sub` row, even though the real one renders that line
+     only once a core count is known. `coresForMax` falls back to `hostCpuCount`, which
+     arrives asynchronously, so making the placeholder conditional on it meant that row
+     appearing a beat late and growing the card right then — the exact movement a skeleton
+     is here to prevent. Reserving it costs one stale row in the rare case where the
+     container has no CPU limit *and* the host core count can't be read. -->
+{#snippet skeletonCard(
+  labelWidth: string,
+  valueWidth: string,
+  subWidth: string | null,
+  withChart: boolean,
+)}
+  <div class="stat-card">
+    <div class="stat-label"><Skeleton width={labelWidth} /></div>
+    <div class="stat-value"><Skeleton width={valueWidth} /></div>
+    {#if subWidth}
+      <div class="stat-sub"><Skeleton width={subWidth} /></div>
+    {/if}
+    {#if withChart}
+      <div class="stat-chart"><Skeleton height="72px" /></div>
+    {/if}
+  </div>
+{/snippet}
 
 <div class="container-stats">
   {#if errorMessage}
@@ -189,7 +254,21 @@
         </div>
       </div>
     {:else if isRunning && !errorMessage}
-      <LoadingState message={$t("stats.loading")} />
+      <!-- Mirrors the real grid card for card, chart slots included, so the first sample
+           landing swaps content in without moving anything. The first sample is not quick
+           either — the daemon holds a `docker stats` call for about a second to get its
+           two CPU samples, plus transport — so this is on screen long enough to be worth
+           being the right shape. -->
+      <div class="stat-grid" aria-busy="true" aria-label={$t("stats.loading")}>
+        {@render skeletonCard("28px", "56px", "104px", true)}
+        {@render skeletonCard("58px", "132px", null, true)}
+        {@render skeletonCard("72px", "150px", null, false)}
+        {@render skeletonCard("78px", "124px", null, false)}
+        <div class="stat-card stat-card-wide">
+          <div class="stat-label"><Skeleton width="34px" /></div>
+          <div class="stat-value"><Skeleton width="30px" /></div>
+        </div>
+      </div>
     {/if}
 
     {#if diskUsage}
@@ -236,17 +315,6 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-  }
-
-  /* LoadingState normally uses `flex: 1` to center itself in whatever space it's given
-     (fine when it's the only thing in a panel) — but here it shares `.stats-body` with
-     the storage section below it, so that same `flex: 1` was stretching it to fill all
-     remaining height, shoving storage down to the very bottom. It then jumped back up
-     the moment stats loaded and the grid (which doesn't stretch) replaced it. Pinning
-     it to its natural size keeps storage's position stable throughout. */
-  .stats-body :global(.loading-state) {
-    flex: none;
-    padding: 24px;
   }
 
   .stat-grid {

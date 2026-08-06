@@ -5,6 +5,7 @@
   import LoadingState from "$lib/components/ui/LoadingState.svelte";
   import ContextMenu, { type ContextMenuItem } from "$lib/components/ui/ContextMenu.svelte";
   import CopyableValue from "$lib/components/ui/CopyableValue.svelte";
+  import InfoTable from "$lib/components/ui/InfoTable.svelte";
   import { rovingFocus } from "$lib/actions/rovingFocus";
   import { imageRegistryUrl, splitImageTag } from "$lib/dockerImage";
   import { copyToClipboard } from "$lib/clipboard";
@@ -12,6 +13,7 @@
   import TerminalSession from "$lib/components/terminal/TerminalSession.svelte";
   import ContainerStats from "$lib/components/containers/ContainerStats.svelte";
   import Icon from "$lib/components/ui/Icon.svelte";
+  import { untrack } from "svelte";
   import { get } from "svelte/store";
   import { t } from "$lib/stores/i18n";
   import copyIcon from "@fluentui/svg-icons/icons/copy_16_regular.svg?raw";
@@ -34,7 +36,14 @@
     containerId,
     liveState,
     activeTab = $bindable(),
-  }: { containerId: string | null; liveState: string | null; activeTab: DetailTabId } = $props();
+    refreshToken = 0,
+  }: {
+    containerId: string | null;
+    liveState: string | null;
+    activeTab: DetailTabId;
+    /** Bumped by the page when the user asks for a refresh; see the effect below. */
+    refreshToken?: number;
+  } = $props();
 
   let detail = $state<ContainerDetail | null>(null);
   let loading = $state(false);
@@ -89,6 +98,67 @@
     const id = containerId;
     const timer = setTimeout(() => loadDetail(id), 150);
     return () => clearTimeout(timer);
+  });
+
+  // A refresh of the page's list doesn't reach this panel — what's on screen here came
+  // from `inspect_container`, which the list never touches. This is the way in.
+  //
+  // Only while Info is showing: Stats polls on its own timer, Logs holds an open stream,
+  // and Terminal holds a live PTY session, so re-inspecting for those tabs would be
+  // wasted work against data nobody is looking at. Everything except the token is read
+  // untracked, so switching tabs or containers doesn't re-trigger this — the effect above
+  // already owns the "selection changed" case, and both paths funnel through
+  // `loadDetail`'s `loadToken` guard, so an overlap can't leave stale data behind.
+  // Starts at -1, outside the range the page ever sends, so the effect's first run just
+  // records where the token began and does nothing — otherwise mounting would duplicate
+  // the initial load the effect above already performs.
+  let seenRefreshToken = -1;
+  $effect(() => {
+    const token = refreshToken;
+    if (seenRefreshToken === -1 || token === seenRefreshToken) {
+      seenRefreshToken = token;
+      return;
+    }
+    seenRefreshToken = token;
+    untrack(() => {
+      if (activeTab === "info" && containerId) void loadDetail(containerId);
+    });
+  });
+
+  // Terminals are kept alive across container switches, not just tab switches: a shell
+  // someone was working in shouldn't die because they glanced at another container. Each
+  // one costs a `wsl.exe` + `docker attach` pair and an xterm instance, so only the most
+  // recently used few are held and the rest are unmounted (which closes their pty).
+  //
+  // Entries stay in the order they were added and eviction overwrites in place. Reordering
+  // the array would make Svelte move the matching DOM nodes, detaching and reattaching
+  // live xterm instances for no reason; recency is tracked with `usedAt` instead.
+  const MAX_LIVE_TERMINALS = 3;
+  let liveTerminals = $state<{ id: string; usedAt: number }[]>([]);
+  let terminalUseCounter = 0;
+
+  /** Whether the selected container still has a terminal being held open. */
+  let terminalKeptAlive = $derived(liveTerminals.some((t) => t.id === containerId));
+
+  $effect(() => {
+    if (activeTab !== "terminal" || !containerId || !isRunning) return;
+    const id = containerId;
+    untrack(() => {
+      const usedAt = ++terminalUseCounter;
+      if (liveTerminals.some((t) => t.id === id)) {
+        liveTerminals = liveTerminals.map((t) => (t.id === id ? { id, usedAt } : t));
+        return;
+      }
+      if (liveTerminals.length < MAX_LIVE_TERMINALS) {
+        liveTerminals = [...liveTerminals, { id, usedAt }];
+        return;
+      }
+      let oldest = 0;
+      for (let i = 1; i < liveTerminals.length; i++) {
+        if (liveTerminals[i].usedAt < liveTerminals[oldest].usedAt) oldest = i;
+      }
+      liveTerminals = liveTerminals.map((t, i) => (i === oldest ? { id, usedAt } : t));
+    });
   });
 
   /** Opens in the system browser rather than letting the webview navigate to it. */
@@ -184,53 +254,50 @@
         {@const { repo, tag } = splitImageTag(image)}
         {@const idShort = detail.id.slice(0, 12)}
         {@const statusText = `${detail.status}${detail.health ? ` (${detail.health})` : ""}`}
-        <table class="info-table">
-          <tbody>
-            <tr>
-              <th>Name</th>
-              <td><CopyableValue value={detail.name}>{detail.name}</CopyableValue></td>
-            </tr>
-            <tr>
-              <th>ID</th>
-              <td><CopyableValue value={idShort}>{idShort}</CopyableValue></td>
-            </tr>
-            <tr>
-              <th>Image</th>
-              <td>
-                <CopyableValue value={image}>
-                  {#if imageUrl}
-                    <!-- Registry URL on the public internet, not an app route. `resolve()`
+        <InfoTable>
+          <tr>
+            <th>Name</th>
+            <td><CopyableValue value={detail.name}>{detail.name}</CopyableValue></td>
+          </tr>
+          <tr>
+            <th>ID</th>
+            <td><CopyableValue value={idShort}>{idShort}</CopyableValue></td>
+          </tr>
+          <tr>
+            <th>Image</th>
+            <td>
+              <CopyableValue value={image}>
+                {#if imageUrl}
+                  <!-- Registry URL on the public internet, not an app route. `resolve()`
                          throws on anything that isn't an absolute internal pathname. -->
-                    <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-                    <a class="ext-link" href={imageUrl} onclick={(e) => openExternal(e, imageUrl)}
-                      >{repo}</a
-                    >{tag ? `:${tag}` : ""}
-                  {:else}
-                    {image}
-                  {/if}
-                </CopyableValue>
-              </td>
-            </tr>
+                  <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+                  <a class="ext-link" href={imageUrl} onclick={(e) => openExternal(e, imageUrl)}
+                    >{repo}</a
+                  >{tag ? `:${tag}` : ""}
+                {:else}
+                  {image}
+                {/if}
+              </CopyableValue>
+            </td>
+          </tr>
+          <tr>
+            <th>Status</th>
+            <td><CopyableValue value={statusText}>{statusText}</CopyableValue></td>
+          </tr>
+          <tr>
+            <th>Restart Policy</th>
+            <td
+              ><CopyableValue value={detail.restart_policy}>{detail.restart_policy}</CopyableValue
+              ></td
+            >
+          </tr>
+          {#if detail.ip_address}
             <tr>
-              <th>Status</th>
-              <td><CopyableValue value={statusText}>{statusText}</CopyableValue></td>
+              <th>IP</th>
+              <td><CopyableValue value={detail.ip_address}>{detail.ip_address}</CopyableValue></td>
             </tr>
-            <tr>
-              <th>Restart Policy</th>
-              <td
-                ><CopyableValue value={detail.restart_policy}>{detail.restart_policy}</CopyableValue
-                ></td
-              >
-            </tr>
-            {#if detail.ip_address}
-              <tr>
-                <th>IP</th>
-                <td><CopyableValue value={detail.ip_address}>{detail.ip_address}</CopyableValue></td
-                >
-              </tr>
-            {/if}
-          </tbody>
-        </table>
+          {/if}
+        </InfoTable>
 
         {#if displayPorts.length > 0}
           <h3>Port Forwards</h3>
@@ -298,37 +365,61 @@
             </tbody>
           </table>
         {/if}
-      {:else if activeTab === "stats" && containerId}
-        {#key containerId}
-          <ContainerStats
-            {containerId}
-            cpuLimitCores={detail?.cpu_limit_cores ?? null}
-            {isRunning}
-          />
-        {/key}
       {:else if activeTab === "logs" && containerId}
         {#key containerId}
           <LogViewer {containerId} {isRunning} />
         {/key}
-      {:else if activeTab === "terminal" && containerId}
-        {#if isRunning}
-          {#key containerId}
-            <TerminalSession {containerId} />
-          {/key}
-        {:else}
-          <div class="terminal-unavailable">
-            <Icon svg={dismissCircleIcon} size={20} />
-            <p>{$t("containers.detail.terminalUnavailable")}</p>
-            <p class="hint-sub">
-              {$t("containers.detail.currentStatus", {
-                status: detail?.status ?? $t("common.unknown"),
-              })}
-            </p>
-          </div>
-        {/if}
-      {:else if activeTab !== "info"}
+      {:else if activeTab === "terminal" && containerId && !isRunning && !terminalKeptAlive}
+        <!-- Only the unavailable case stays in the chain; a live session is rendered
+             below, outside it, so switching tabs can't tear it down. A container that
+             stopped while its terminal was being held open is excluded here — that
+             session still has its final output worth reading, so it's shown (with its own
+             "session ended" banner) instead of this notice. -->
+        <div class="terminal-unavailable">
+          <Icon svg={dismissCircleIcon} size={20} />
+          <p>{$t("containers.detail.terminalUnavailable")}</p>
+          <p class="hint-sub">
+            {$t("containers.detail.currentStatus", {
+              status: detail?.status ?? $t("common.unknown"),
+            })}
+          </p>
+        </div>
+      {:else if activeTab !== "info" && activeTab !== "stats" && activeTab !== "terminal"}
         <p class="hint">{$t("common.comingSoon")}</p>
       {/if}
+
+      <!-- Deliberately outside the chain above, which would destroy this on every tab
+           switch and take the collected history with it. Hidden instead, and told to stop
+           polling while it's out of view, so returning to Stats shows the chart that was
+           already there rather than an empty one being rebuilt a sample at a time.
+           `{#key}` still resets it when the selected container changes, which is the one
+           case where the old history really is meaningless. -->
+      {#if containerId}
+        <div class="stats-pane" class:hidden={activeTab !== "stats" || !!errorMessage || loading}>
+          {#key containerId}
+            <ContainerStats
+              {containerId}
+              cpuLimitCores={detail?.cpu_limit_cores ?? null}
+              {isRunning}
+              active={activeTab === "stats"}
+            />
+          {/key}
+        </div>
+      {/if}
+
+      <!-- Outside the chain for the same reason as stats, but the stake is higher: the
+           chain unmounted this on every tab switch, and unmounting closes the pty, so
+           stepping over to Info and back dropped whatever shell the user had going.
+           Rendering the whole kept-alive set (rather than just the selected container)
+           is what carries that across container switches too — all but one are hidden.
+           `{#key}` is gone because the `each` key does the same job: an entry keeps its
+           component for as long as its id stays in the list. -->
+      {#each liveTerminals as term (term.id)}
+        <TerminalSession
+          containerId={term.id}
+          hidden={activeTab !== "terminal" || term.id !== containerId || !!errorMessage || loading}
+        />
+      {/each}
     </div>
   {/if}
 </div>
@@ -401,6 +492,16 @@
     padding: 14px 16px;
   }
 
+  /* Wrapper for the always-mounted stats view. `height: 100%` because ContainerStats
+     sizes itself against its parent, and this now sits between it and `.tab-content`. */
+  .stats-pane {
+    height: 100%;
+  }
+
+  .stats-pane.hidden {
+    display: none;
+  }
+
   /* The log/terminal views manage their own scrolling (xterm's internal scrollback),
      so they get the full panel with no padding rather than sitting inside another
      scrollable, padded box. */
@@ -438,22 +539,6 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
-  }
-
-  .info-table th {
-    text-align: left;
-    color: var(--dockl-text-secondary);
-    font-weight: 500;
-    padding: 4px 12px 4px 0;
-    white-space: nowrap;
-    vertical-align: top;
-  }
-
-  .info-table td {
-    padding: 4px 0;
-    word-break: break-all;
-    user-select: text;
-    cursor: text;
   }
 
   .data-table th,

@@ -7,6 +7,8 @@
   import ComposeDetailPanel from "$lib/components/containers/ComposeDetailPanel.svelte";
   import MasterDetail from "$lib/components/layout/MasterDetail.svelte";
   import PageHeader from "$lib/components/layout/PageHeader.svelte";
+  import Icon from "$lib/components/ui/Icon.svelte";
+  import arrowClockwiseIcon from "@fluentui/svg-icons/icons/arrow_clockwise_16_regular.svg?raw";
   import { pushToast, resolveToast } from "$lib/stores/toasts";
   import { connection } from "$lib/stores/connection";
   import { refreshOnDockerEvents } from "$lib/dockerEvents.svelte";
@@ -25,6 +27,10 @@
   // toggled by `{#if selectedProject}`, so only one is ever mounted at a time and either
   // one's own local state would reset every time the other is shown instead.
   let activeTab = $state<DetailTabId>("info");
+  // The container detail panel reads `inspect_container`, not this page's list, so a
+  // refresh of the list alone leaves it showing whatever it fetched when the row was
+  // selected. Bumping this is how a manual refresh reaches it; see ContainerDetailPanel.
+  let refreshToken = $state(0);
 
   async function refresh() {
     try {
@@ -110,12 +116,34 @@
   // "connecting"). Event-driven rather than polled: a container start/stop/die/etc.
   // refreshes this list within `watchDockerEvents`'s debounce window instead of up to
   // 5s late, without spending anything while nothing's actually changing.
+  // Only a refresh the user actually asked for. Every other caller of `refresh()` is a
+  // Docker event, and those already reach the detail panel through `liveState` — bumping
+  // the token there would mean an extra `inspect_container` (a `wsl.exe` spawn in
+  // shell-out mode) on every start/stop/die in the whole engine, selected or not.
+  function manualRefresh() {
+    refreshToken++;
+    void refresh();
+  }
+
   refreshOnDockerEvents(() => $connection.status === "connected", ["container"], refresh);
-  refreshOnF5(refresh);
+  refreshOnF5(manualRefresh);
 </script>
 
 <div class="page-view">
-  <PageHeader title={$t("nav.containers")} />
+  <PageHeader title={$t("nav.containers")}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <fluent-button
+      appearance="outline"
+      icon-only
+      tabindex="-1"
+      title={$t("common.refresh")}
+      aria-label={$t("common.refresh")}
+      onclick={manualRefresh}
+    >
+      <Icon svg={arrowClockwiseIcon} size={14} />
+    </fluent-button>
+  </PageHeader>
 
   {#if errorMessage}
     <div class="error-banner dockl-surface">{errorMessage}</div>
@@ -149,6 +177,7 @@
         <ContainerDetailPanel
           containerId={selectedId}
           liveState={containers.find((c) => c.id === selectedId)?.state ?? null}
+          {refreshToken}
           bind:activeTab
         />
       {/if}

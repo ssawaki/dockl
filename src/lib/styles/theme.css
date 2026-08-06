@@ -32,6 +32,11 @@
      hover, and on a list you can be hovering one row while another is selected. */
   --dockl-surface-selected: rgba(15, 108, 189, 0.12);
   --dockl-border: rgba(0, 0, 0, 0.08);
+  /* Skeleton placeholders. The shimmer is the *lighter* of the pair in both themes, so
+     the highlight always reads as a sweep of light passing over the block — which on a
+     light theme means backing off the dark tint rather than adding a brighter one. */
+  --dockl-skeleton: rgba(0, 0, 0, 0.07);
+  --dockl-skeleton-shimmer: rgba(0, 0, 0, 0.03);
   --dockl-titlebar: rgba(255, 255, 255, 0.35);
   /* Same hue as --dockl-titlebar but less translucent, for surfaces that overlay other
      page content and need to read clearly over it while still letting some of the
@@ -66,6 +71,10 @@
      almost nothing, so it needs more of it to stay visible. */
   --dockl-surface-selected: rgba(74, 158, 227, 0.22);
   --dockl-border: rgba(255, 255, 255, 0.08);
+  /* Inverted against the light theme: here the block is a light tint on a dark surface,
+     so the shimmer gets *more* of it rather than less. */
+  --dockl-skeleton: rgba(255, 255, 255, 0.07);
+  --dockl-skeleton-shimmer: rgba(255, 255, 255, 0.14);
   --dockl-titlebar: rgba(20, 20, 20, 0.35);
   --dockl-titlebar-strong: rgba(20, 20, 20, 0.9);
   --dockl-titlebar-opaque: rgb(20, 20, 20);

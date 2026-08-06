@@ -13,7 +13,13 @@
   // handles a single containerId for its whole lifetime (mount → destroy), rather than
   // being reused across container switches. That's what makes the plain "start once on
   // mount" shape below correct/sufficient.
-  let { containerId }: { containerId: string } = $props();
+  //
+  // `hidden` is how the panel switches away from the Terminal tab without losing the
+  // session — the same arrangement WslShellDialog uses. The component stays mounted and
+  // only its root gets `display: none`, so the pty, the scrollback and both event
+  // listeners survive. Unmounting instead (which is what the tab chain used to do) killed
+  // the session outright, dropping whatever the user was in the middle of.
+  let { containerId, hidden = false }: { containerId: string; hidden?: boolean } = $props();
 
   let ended = $state(false);
   let errorMessage = $state<string | null>(null);
@@ -97,8 +103,31 @@
     // size once at startup) gets the real panel dimensions instead of xterm's 80x24
     // default — starting at the wrong size, with nothing to correct it until the next
     // resize, is what made vim render so badly broken.
-    void controller.mount(el).then(() => startSession(containerId));
+    void controller.mount(el).then(() => {
+      terminalMounted = true;
+      return startSession(containerId);
+    });
   }
+
+  let terminalMounted = $state(false);
+
+  // Runs when the terminal first appears and again every time it's un-hidden.
+  //
+  // A hidden element has no layout box, so `fit()` deliberately bails out (see
+  // XtermController.fit — measuring one anyway is actively destructive). That means any
+  // window or panel resize that happened while another tab was showing never reached the
+  // terminal or the pty, and has to be picked up on the way back in.
+  //
+  // No `focus()` here, unlike WslShellDialog: that one is a dialog the user often opens by
+  // keyboard shortcut, where landing anywhere else is useless. A tab is switched to by
+  // clicking or arrowing onto the tab itself, and yanking focus into the terminal from
+  // under that is not what was asked for.
+  $effect(() => {
+    if (hidden || !terminalMounted) return;
+    // Same reason `mount()` defers its first fit: `display` has only just changed, and
+    // measuring in this tick can still read the pre-layout size.
+    requestAnimationFrame(() => controller.fit());
+  });
 
   onDestroy(() => {
     destroyed = true;
@@ -107,7 +136,7 @@
   });
 </script>
 
-<div class="terminal-session">
+<div class="terminal-session" class:hidden>
   {#if errorMessage}
     <div class="term-banner error">{errorMessage}</div>
   {:else if ended}
@@ -130,6 +159,13 @@
     flex-direction: column;
     height: 100%;
     min-height: 300px;
+  }
+
+  /* `display: none` rather than the parent unmounting us — see the `hidden` prop. This
+     also takes the terminal out of the tab order while it's away, so a hidden session
+     can't be typed into by accident. */
+  .terminal-session.hidden {
+    display: none;
   }
 
   .term-banner {
