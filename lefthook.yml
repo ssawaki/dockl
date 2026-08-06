@@ -1,0 +1,33 @@
+# Git hooks. Run `npx lefthook install` after cloning (npm's `prepare` script does it
+# automatically on `npm install`).
+#
+# Formatting and linting only. The type checks are deliberately left out: `svelte-check`
+# takes ~17s and can't be narrowed to the files being committed, and a cold `cargo check`
+# runs well over a minute. A hook that costs that much per commit is one people start
+# bypassing with `--no-verify`, which is worse than not having it. Run `npm run check` and
+# `cargo check` by hand, or from CI once there's somewhere to push to.
+pre-commit:
+  parallel: true
+  commands:
+    # `--write` rather than `--check`: the point is to not think about formatting, and
+    # `stage_fixed` puts the result back into the commit being made.
+    prettier:
+      glob: "*.{ts,js,mjs,svelte,json,css,html}"
+      run: npx prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+    # `--fix` handles what it can; anything left is a real finding and exits non-zero,
+    # which stops the commit.
+    eslint:
+      glob: "*.{ts,js,mjs,svelte}"
+      run: npx eslint --fix {staged_files}
+      stage_fixed: true
+
+    # `rustfmt` directly rather than `cargo fmt`, which only knows how to format an entire
+    # crate — that would quietly reformat files the commit never touched and leave them
+    # behind as unstaged changes. Edition has to be passed explicitly for the same reason:
+    # without Cargo there's no manifest to read it from.
+    rustfmt:
+      glob: "*.rs"
+      run: rustfmt --edition 2021 {staged_files}
+      stage_fixed: true
