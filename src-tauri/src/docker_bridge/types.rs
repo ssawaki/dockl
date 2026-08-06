@@ -132,7 +132,11 @@ mod tests {
             image_row("5b10f432ef3d", "dockl-demo", "v1"),
         ]);
 
-        assert_eq!(folded.len(), 2, "rows for the same image should collapse into one");
+        assert_eq!(
+            folded.len(),
+            2,
+            "rows for the same image should collapse into one"
+        );
         assert_eq!(folded[0].id, "5b10f432ef3d");
         assert_eq!(
             folded[0].tags,
@@ -155,7 +159,10 @@ mod tests {
         // dangling image look like it was tagged `<none>:<none>`.
         let folded = fold_docker_images(vec![image_row("deadbeef", "<none>", "<none>")]);
         assert_eq!(folded.len(), 1);
-        assert!(folded[0].tags.is_empty(), "dangling image should have no names");
+        assert!(
+            folded[0].tags.is_empty(),
+            "dangling image should have no names"
+        );
     }
 
     /// Real (anonymized-path) label string from a container brought up with
@@ -212,7 +219,10 @@ mod tests {
     /// `restart:` key in the compose file) — it must not render as a blank cell.
     #[test]
     fn restart_policy_label_normalizes_unset_policy_to_no() {
-        assert_eq!(restart_policy_label(&host_config_with_policy(policy("", 0))), "no");
+        assert_eq!(
+            restart_policy_label(&host_config_with_policy(policy("", 0))),
+            "no"
+        );
         assert_eq!(restart_policy_label(&host_config_with_policy(None)), "no");
         assert_eq!(
             restart_policy_label(&host_config_with_policy(Some(InspectRestartPolicy {
@@ -225,8 +235,14 @@ mod tests {
 
     #[test]
     fn restart_policy_label_keeps_plain_policies_verbatim() {
-        assert_eq!(restart_policy_label(&host_config_with_policy(policy("no", 0))), "no");
-        assert_eq!(restart_policy_label(&host_config_with_policy(policy("always", 0))), "always");
+        assert_eq!(
+            restart_policy_label(&host_config_with_policy(policy("no", 0))),
+            "no"
+        );
+        assert_eq!(
+            restart_policy_label(&host_config_with_policy(policy("always", 0))),
+            "always"
+        );
         assert_eq!(
             restart_policy_label(&host_config_with_policy(policy("unless-stopped", 0))),
             "unless-stopped"
@@ -246,7 +262,10 @@ mod tests {
         );
         // Docker itself rejects a cap on `always`, but a stray one must not leak into
         // the label as `always:5`.
-        assert_eq!(restart_policy_label(&host_config_with_policy(policy("always", 5))), "always");
+        assert_eq!(
+            restart_policy_label(&host_config_with_policy(policy("always", 5))),
+            "always"
+        );
     }
 }
 

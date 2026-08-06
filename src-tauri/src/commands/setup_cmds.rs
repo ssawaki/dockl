@@ -23,7 +23,11 @@ pub async fn setup_list_distros() -> Result<Vec<DistroInfo>, AppError> {
 /// no-op past the first successful connect (see its own doc comment for why it's tied
 /// to *this* command rather than something the frontend triggers separately).
 #[tauri::command]
-pub async fn setup_connect(app: AppHandle, state: State<'_, AppState>, distro: String) -> Result<(), AppError> {
+pub async fn setup_connect(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    distro: String,
+) -> Result<(), AppError> {
     let connection = ShellOutConnection::new(distro.clone());
     // Bounded so a wedged distro surfaces as a retryable error instead of leaving the
     // app on its "connecting" screen forever with nothing to act on.
@@ -55,7 +59,12 @@ pub async fn setup_current_distro(state: State<'_, AppState>) -> Result<Option<S
 #[tauri::command]
 pub async fn connect_tcp_bridge(state: State<'_, AppState>, port: u16) -> Result<(), AppError> {
     let connection = EngineApiConnection::tcp(port)?;
-    let distro = state.current_distro.read().await.clone().unwrap_or_default();
+    let distro = state
+        .current_distro
+        .read()
+        .await
+        .clone()
+        .unwrap_or_default();
     wsl::with_connect_timeout(&distro, connection.list_containers(true)).await?;
 
     *state.connection.write().await = Some(Arc::new(connection));
@@ -127,7 +136,9 @@ pub async fn check_tcp_bridge(port: u16) -> Result<(), AppError> {
 fn describe_ping_error(err: bollard::errors::Error) -> AppError {
     if let bollard::errors::Error::HyperLegacyError { err: ref hyper_err } = err {
         if hyper_err.is_connect() {
-            return AppError::CommandFailed("Dockerが待ち受けていません。セットアップを実行してください。".to_string());
+            return AppError::CommandFailed(
+                "Dockerが待ち受けていません。セットアップを実行してください。".to_string(),
+            );
         }
     }
     AppError::CommandFailed(err.to_string())

@@ -112,12 +112,15 @@ pub async fn run_docker_verbose(distro: &str, args: &[&str]) -> Result<String, A
         .await
         .map_err(|e| AppError::WslUnavailable(e.to_string()))?;
 
-    let combined = [decode_process_output(&output.stdout), decode_process_output(&output.stderr)]
-        .into_iter()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("\n");
+    let combined = [
+        decode_process_output(&output.stdout),
+        decode_process_output(&output.stderr),
+    ]
+    .into_iter()
+    .map(|s| s.trim().to_string())
+    .filter(|s| !s.is_empty())
+    .collect::<Vec<_>>()
+    .join("\n");
 
     if !output.status.success() {
         return Err(AppError::CommandFailed(if combined.is_empty() {

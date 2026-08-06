@@ -57,9 +57,9 @@ impl AppError {
     /// wrapper to place. Errors with nothing to interpolate return an empty map.
     fn params(&self) -> HashMap<&'static str, String> {
         match self {
-            Self::WslUnavailable(detail) | Self::CommandFailed(detail) | Self::ParseError(detail) => {
-                HashMap::from([("detail", detail.clone())])
-            }
+            Self::WslUnavailable(detail)
+            | Self::CommandFailed(detail)
+            | Self::ParseError(detail) => HashMap::from([("detail", detail.clone())]),
             Self::Io(e) => HashMap::from([("detail", e.to_string())]),
             Self::ConnectTimeout(seconds) => HashMap::from([("seconds", seconds.to_string())]),
             Self::NoDistroFound | Self::NotConfigured => HashMap::new(),

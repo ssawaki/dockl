@@ -45,7 +45,15 @@ fn is_relevant(kind: &str, action: &str) -> bool {
     match kind {
         "container" => matches!(
             action,
-            "start" | "stop" | "die" | "create" | "destroy" | "pause" | "unpause" | "rename" | "restart"
+            "start"
+                | "stop"
+                | "die"
+                | "create"
+                | "destroy"
+                | "pause"
+                | "unpause"
+                | "rename"
+                | "restart"
         ),
         "image" => true,
         "volume" | "network" => matches!(action, "create" | "destroy"),

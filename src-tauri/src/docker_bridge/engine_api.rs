@@ -3,7 +3,9 @@ use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
-use bollard::container::{BlkioStats, CPUStats, MemoryStats, MemoryStatsStats, NetworkStats, PidsStats};
+use bollard::container::{
+    BlkioStats, CPUStats, MemoryStats, MemoryStatsStats, NetworkStats, PidsStats,
+};
 use bollard::models;
 use bytes::Bytes;
 use hyper::Method;
@@ -14,9 +16,9 @@ use crate::error::AppError;
 use super::connection::DockerConnection;
 use super::dial_stdio::DialStdioConnection;
 use super::types::{
-    cpu_limit_cores, restart_policy_label, sort_port_forwards, ContainerActionKind, ContainerDetail,
-    ContainerSummary, DiskUsageEntry, ImageSummary, InspectHostConfig, InspectRestartPolicy,
-    MountInfo, NetworkSummary, PortForward, VolumeSummary,
+    cpu_limit_cores, restart_policy_label, sort_port_forwards, ContainerActionKind,
+    ContainerDetail, ContainerSummary, DiskUsageEntry, ImageSummary, InspectHostConfig,
+    InspectRestartPolicy, MountInfo, NetworkSummary, PortForward, VolumeSummary,
 };
 
 /// How an `EngineApiConnection` reaches the Docker Engine API. Both speak the exact same
@@ -57,11 +59,15 @@ impl EngineApiConnection {
         let http = reqwest::Client::builder()
             .build()
             .map_err(|e| AppError::CommandFailed(e.to_string()))?;
-        Ok(Self { transport: Transport::Tcp { http, port } })
+        Ok(Self {
+            transport: Transport::Tcp { http, port },
+        })
     }
 
     pub fn dial_stdio(distro: String) -> Self {
-        Self { transport: Transport::DialStdio(DialStdioConnection::new(distro)) }
+        Self {
+            transport: Transport::DialStdio(DialStdioConnection::new(distro)),
+        }
     }
 
     /// Performs one request and returns the raw response body, turning a non-2xx response
@@ -86,7 +92,12 @@ impl EngineApiConnection {
         }
     }
 
-    async fn send(&self, method: Method, path: &str, query: &[(&str, String)]) -> Result<Bytes, AppError> {
+    async fn send(
+        &self,
+        method: Method,
+        path: &str,
+        query: &[(&str, String)],
+    ) -> Result<Bytes, AppError> {
         match &self.transport {
             Transport::DialStdio(conn) => conn.request(method, path, query).await,
             Transport::Tcp { http, port } => {
@@ -98,7 +109,10 @@ impl EngineApiConnection {
                     .await
                     .map_err(|e| AppError::CommandFailed(e.to_string()))?;
                 let status = resp.status();
-                let body = resp.bytes().await.map_err(|e| AppError::CommandFailed(e.to_string()))?;
+                let body = resp
+                    .bytes()
+                    .await
+                    .map_err(|e| AppError::CommandFailed(e.to_string()))?;
                 if status.is_success() {
                     return Ok(body);
                 }
@@ -124,7 +138,11 @@ impl EngineApiConnection {
     /// something that was going to succeed.
     const PATIENT: Duration = Duration::from_secs(180);
 
-    async fn get_json<T: DeserializeOwned>(&self, path: &str, query: &[(&str, String)]) -> Result<T, AppError> {
+    async fn get_json<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &[(&str, String)],
+    ) -> Result<T, AppError> {
         self.get_json_within(path, query, Self::QUICK).await
     }
 
@@ -138,8 +156,14 @@ impl EngineApiConnection {
         serde_json::from_slice(&body).map_err(|e| AppError::ParseError(e.to_string()))
     }
 
-    async fn post_json<T: DeserializeOwned>(&self, path: &str, query: &[(&str, String)]) -> Result<T, AppError> {
-        let body = self.request(Method::POST, path, query, Self::PATIENT).await?;
+    async fn post_json<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &[(&str, String)],
+    ) -> Result<T, AppError> {
+        let body = self
+            .request(Method::POST, path, query, Self::PATIENT)
+            .await?;
         serde_json::from_slice(&body).map_err(|e| AppError::ParseError(e.to_string()))
     }
 
@@ -149,7 +173,8 @@ impl EngineApiConnection {
     }
 
     async fn delete(&self, path: &str, query: &[(&str, String)]) -> Result<(), AppError> {
-        self.request(Method::DELETE, path, query, Self::PATIENT).await?;
+        self.request(Method::DELETE, path, query, Self::PATIENT)
+            .await?;
         Ok(())
     }
 }
@@ -175,8 +200,14 @@ mod dial_stdio_tests {
         let via_api = EngineApiConnection::dial_stdio(distro.clone());
         let via_cli = super::super::shell_out::ShellOutConnection::new(distro);
 
-        let mut api = via_api.list_images().await.expect("engine api list_images failed");
-        let mut cli = via_cli.list_images().await.expect("shell-out list_images failed");
+        let mut api = via_api
+            .list_images()
+            .await
+            .expect("engine api list_images failed");
+        let mut cli = via_cli
+            .list_images()
+            .await
+            .expect("shell-out list_images failed");
         api.sort_by(|a, b| a.id.cmp(&b.id));
         cli.sort_by(|a, b| a.id.cmp(&b.id));
 
@@ -189,7 +220,9 @@ mod dial_stdio_tests {
         let cli_by_id: HashMap<_, _> = cli.iter().map(|i| (i.id.clone(), i.tags.clone())).collect();
         let mut compared = 0;
         for image in &api {
-            let Some(cli_tags) = cli_by_id.get(&image.id) else { continue };
+            let Some(cli_tags) = cli_by_id.get(&image.id) else {
+                continue;
+            };
             assert_eq!(
                 &image.tags, cli_tags,
                 "the two connection modes disagree about the names of image {}",
@@ -198,7 +231,10 @@ mod dial_stdio_tests {
             compared += 1;
         }
 
-        assert!(compared > 0, "no images in common — nothing was actually compared");
+        assert!(
+            compared > 0,
+            "no images in common — nothing was actually compared"
+        );
         assert!(
             api.iter().any(|i| i.tags.len() > 1),
             "no multi-tag image present — tag one first, or this proves nothing",
@@ -223,7 +259,10 @@ mod dial_stdio_tests {
         let result = conn.list_containers(true).await;
         let elapsed = started.elapsed();
 
-        assert!(result.is_err(), "an unreachable distro should not list containers");
+        assert!(
+            result.is_err(),
+            "an unreachable distro should not list containers"
+        );
         assert!(
             elapsed < EngineApiConnection::QUICK + Duration::from_secs(5),
             "took {elapsed:?}, which is past the {:?} ceiling — the call is effectively unbounded",
@@ -244,7 +283,10 @@ mod dial_stdio_tests {
         let distro = std::env::var("DOCKL_TEST_DISTRO").unwrap_or_else(|_| "Ubuntu".to_string());
         let conn = EngineApiConnection::dial_stdio(distro);
 
-        let containers = conn.list_containers(true).await.expect("list_containers failed");
+        let containers = conn
+            .list_containers(true)
+            .await
+            .expect("list_containers failed");
         // `list_images` is the interesting one: it fires two requests concurrently with
         // `try_join!`, which on this transport means both contend for the single relay.
         let images = conn.list_images().await.expect("list_images failed");
@@ -267,24 +309,44 @@ mod dial_stdio_tests {
             // deserializes into a `HashMap` — and iterating one of those yields a
             // different order per instance, so repeated inspects reshuffled the detail
             // panel's Port Forwards table under the user.
-            let first = conn.inspect_container(&with_ports.id).await.expect("inspect failed");
+            let first = conn
+                .inspect_container(&with_ports.id)
+                .await
+                .expect("inspect failed");
             for attempt in 0..5 {
-                let again = conn.inspect_container(&with_ports.id).await.expect("inspect failed");
+                let again = conn
+                    .inspect_container(&with_ports.id)
+                    .await
+                    .expect("inspect failed");
                 let order = |d: &ContainerDetail| {
                     d.ports
                         .iter()
                         .map(|p| format!("{}:{}/{}", p.host_ip, p.host_port, p.protocol))
                         .collect::<Vec<_>>()
                 };
-                assert_eq!(order(&first), order(&again), "port order changed on attempt {attempt}");
+                assert_eq!(
+                    order(&first),
+                    order(&again),
+                    "port order changed on attempt {attempt}"
+                );
             }
         }
 
         if let Some(running) = containers.iter().find(|c| c.state == "running") {
-            conn.inspect_container(&running.id).await.expect("inspect failed");
-            let stats = conn.container_stats(&running.id).await.expect("stats failed");
-            assert!(stats.contains("CPUPerc"), "stats not in docker stats shape: {stats}");
-            conn.container_disk_usage(&running.id).await.expect("disk usage failed");
+            conn.inspect_container(&running.id)
+                .await
+                .expect("inspect failed");
+            let stats = conn
+                .container_stats(&running.id)
+                .await
+                .expect("stats failed");
+            assert!(
+                stats.contains("CPUPerc"),
+                "stats not in docker stats shape: {stats}"
+            );
+            conn.container_disk_usage(&running.id)
+                .await
+                .expect("disk usage failed");
         }
     }
 }
@@ -293,7 +355,10 @@ fn filters_query(filters: &HashMap<&str, Vec<&str>>) -> Vec<(&'static str, Strin
     if filters.is_empty() {
         Vec::new()
     } else {
-        vec![("filters", serde_json::to_string(filters).unwrap_or_default())]
+        vec![(
+            "filters",
+            serde_json::to_string(filters).unwrap_or_default(),
+        )]
     }
 }
 
@@ -303,7 +368,11 @@ fn filters_query(filters: &HashMap<&str, Vec<&str>>) -> Vec<(&'static str, Strin
 /// already print the 12-char short form) — the Engine API accepts either form back for
 /// any operation that takes an ID, so nothing is lost by truncating for display.
 fn short_id(id: &str) -> String {
-    id.strip_prefix("sha256:").unwrap_or(id).chars().take(12).collect()
+    id.strip_prefix("sha256:")
+        .unwrap_or(id)
+        .chars()
+        .take(12)
+        .collect()
 }
 
 /// Matches `docker system df`'s own decimal (1000-based) size formatting closely enough
@@ -399,11 +468,15 @@ struct FormattedStats {
 /// itself would show rather than some other, differently-normalized figure.
 fn cpu_percent(cpu: &CPUStats, precpu: &CPUStats) -> f64 {
     let cpu_delta = cpu.cpu_usage.total_usage as f64 - precpu.cpu_usage.total_usage as f64;
-    let system_delta = cpu.system_cpu_usage.unwrap_or(0) as f64 - precpu.system_cpu_usage.unwrap_or(0) as f64;
-    let online_cpus = cpu
-        .online_cpus
-        .filter(|&n| n > 0)
-        .unwrap_or_else(|| cpu.cpu_usage.percpu_usage.as_ref().map(|v| v.len() as u64).unwrap_or(1));
+    let system_delta =
+        cpu.system_cpu_usage.unwrap_or(0) as f64 - precpu.system_cpu_usage.unwrap_or(0) as f64;
+    let online_cpus = cpu.online_cpus.filter(|&n| n > 0).unwrap_or_else(|| {
+        cpu.cpu_usage
+            .percpu_usage
+            .as_ref()
+            .map(|v| v.len() as u64)
+            .unwrap_or(1)
+    });
     if system_delta > 0.0 && cpu_delta > 0.0 {
         (cpu_delta / system_delta) * online_cpus as f64 * 100.0
     } else {
@@ -432,18 +505,26 @@ fn mem_used_bytes(mem: &MemoryStats) -> u64 {
 /// Sums rx/tx bytes across every network interface, matching `docker stats`'s NET I/O
 /// (which likewise reports one combined figure, not a per-interface breakdown).
 fn network_io(networks: &Option<HashMap<String, NetworkStats>>) -> (u64, u64) {
-    let Some(networks) = networks else { return (0, 0) };
-    networks.values().fold((0, 0), |(rx, tx), n| (rx + n.rx_bytes, tx + n.tx_bytes))
+    let Some(networks) = networks else {
+        return (0, 0);
+    };
+    networks
+        .values()
+        .fold((0, 0), |(rx, tx), n| (rx + n.rx_bytes, tx + n.tx_bytes))
 }
 
 /// Sums read/write bytes from the recursive blkio entries, matching `docker stats`'s
 /// BLOCK I/O (`op` is Docker's own capitalization, e.g. `"Read"`/`"Write"` on Linux).
 fn block_io(blkio: &BlkioStats) -> (u64, u64) {
-    let Some(entries) = &blkio.io_service_bytes_recursive else { return (0, 0) };
-    entries.iter().fold((0, 0), |(read, write), e| match e.op.to_lowercase().as_str() {
-        "read" => (read + e.value, write),
-        "write" => (read, write + e.value),
-        _ => (read, write),
+    let Some(entries) = &blkio.io_service_bytes_recursive else {
+        return (0, 0);
+    };
+    entries.iter().fold((0, 0), |(read, write), e| {
+        match e.op.to_lowercase().as_str() {
+            "read" => (read + e.value, write),
+            "write" => (read, write + e.value),
+            _ => (read, write),
+        }
     })
 }
 
@@ -486,14 +567,23 @@ impl DockerConnection for EngineApiConnection {
     async fn list_containers(&self, all: bool) -> Result<Vec<ContainerSummary>, AppError> {
         let query = [("all", all.to_string())];
         let raw: Vec<models::ContainerSummary> = self.get_json("/containers/json", &query).await?;
-        Ok(raw.into_iter().map(container_summary_from_bollard).collect())
+        Ok(raw
+            .into_iter()
+            .map(container_summary_from_bollard)
+            .collect())
     }
 
-    async fn container_action(&self, id: &str, action: ContainerActionKind) -> Result<(), AppError> {
+    async fn container_action(
+        &self,
+        id: &str,
+        action: ContainerActionKind,
+    ) -> Result<(), AppError> {
         match action {
             ContainerActionKind::Start => self.post_empty(&format!("/containers/{id}/start")).await,
             ContainerActionKind::Stop => self.post_empty(&format!("/containers/{id}/stop")).await,
-            ContainerActionKind::Restart => self.post_empty(&format!("/containers/{id}/restart")).await,
+            ContainerActionKind::Restart => {
+                self.post_empty(&format!("/containers/{id}/restart")).await
+            }
             ContainerActionKind::Remove => {
                 // Stop first so the container gets the same SIGTERM + grace period a plain
                 // Stop would give it, rather than the bare SIGKILL `force` alone sends —
@@ -502,15 +592,23 @@ impl DockerConnection for EngineApiConnection {
                 // that won't stop cleanly must still be removable, and `force` below then
                 // behaves exactly as it did before.
                 let _ = self.post_empty(&format!("/containers/{id}/stop")).await;
-                self.delete(&format!("/containers/{id}"), &[("force", "true".to_string())]).await
+                self.delete(
+                    &format!("/containers/{id}"),
+                    &[("force", "true".to_string())],
+                )
+                .await
             }
             ContainerActionKind::Pause => self.post_empty(&format!("/containers/{id}/pause")).await,
-            ContainerActionKind::Unpause => self.post_empty(&format!("/containers/{id}/unpause")).await,
+            ContainerActionKind::Unpause => {
+                self.post_empty(&format!("/containers/{id}/unpause")).await
+            }
         }
     }
 
     async fn inspect_container(&self, id: &str) -> Result<ContainerDetail, AppError> {
-        let raw: models::ContainerInspectResponse = self.get_json(&format!("/containers/{id}/json"), &[]).await?;
+        let raw: models::ContainerInspectResponse = self
+            .get_json(&format!("/containers/{id}/json"), &[])
+            .await?;
 
         let state = raw.state.unwrap_or_default();
         let config = raw.config.unwrap_or_default();
@@ -573,7 +671,11 @@ impl DockerConnection for EngineApiConnection {
 
         Ok(ContainerDetail {
             id: raw.id.unwrap_or_default(),
-            name: raw.name.unwrap_or_default().trim_start_matches('/').to_string(),
+            name: raw
+                .name
+                .unwrap_or_default()
+                .trim_start_matches('/')
+                .to_string(),
             image: config.image.unwrap_or_default(),
             status: state.status.map(|s| s.to_string()).unwrap_or_default(),
             health: state.health.and_then(|h| h.status).map(|s| s.to_string()),
@@ -639,7 +741,9 @@ impl DockerConnection for EngineApiConnection {
         // widening it to unused-but-tagged images too.
         let dangling = (!all).to_string();
         let filters = HashMap::from([("dangling", vec![dangling.as_str()])]);
-        let resp: models::ImagePruneResponse = self.post_json("/images/prune", &filters_query(&filters)).await?;
+        let resp: models::ImagePruneResponse = self
+            .post_json("/images/prune", &filters_query(&filters))
+            .await?;
         Ok(format!(
             "Total reclaimed space: {}",
             format_bytes(resp.space_reclaimed.unwrap_or(0))
@@ -672,9 +776,14 @@ impl DockerConnection for EngineApiConnection {
         // every version, but it is accepted by modern Docker — it's the same one
         // `docker volume prune -a` sends, widening the default anonymous-only scope to
         // unused-but-named volumes too.
-        let filters: HashMap<&str, Vec<&str>> =
-            if all { HashMap::from([("all", vec!["true"])]) } else { HashMap::new() };
-        let resp: models::VolumePruneResponse = self.post_json("/volumes/prune", &filters_query(&filters)).await?;
+        let filters: HashMap<&str, Vec<&str>> = if all {
+            HashMap::from([("all", vec!["true"])])
+        } else {
+            HashMap::new()
+        };
+        let resp: models::VolumePruneResponse = self
+            .post_json("/volumes/prune", &filters_query(&filters))
+            .await?;
         Ok(format!(
             "Total reclaimed space: {}",
             format_bytes(resp.space_reclaimed.unwrap_or(0))
@@ -716,16 +825,27 @@ impl DockerConnection for EngineApiConnection {
     async fn system_df(&self) -> Result<Vec<DiskUsageEntry>, AppError> {
         // `PATIENT` rather than `QUICK`: the daemon walks every image layer and volume to
         // answer this, which is slow enough on a busy system to trip a ten-second ceiling.
-        let df: models::SystemDataUsageResponse =
-            self.get_json_within("/system/df", &[], Self::PATIENT).await?;
+        let df: models::SystemDataUsageResponse = self
+            .get_json_within("/system/df", &[], Self::PATIENT)
+            .await?;
 
         let images = df.images.unwrap_or_default();
         let images_entry = DiskUsageEntry {
             kind: "Images".to_string(),
             total_count: images.len().to_string(),
-            active: images.iter().filter(|i| i.containers > 0).count().to_string(),
+            active: images
+                .iter()
+                .filter(|i| i.containers > 0)
+                .count()
+                .to_string(),
             size: format_bytes(images.iter().map(|i| i.size).sum()),
-            reclaimable: format_bytes(images.iter().filter(|i| i.containers == 0).map(|i| i.size).sum()),
+            reclaimable: format_bytes(
+                images
+                    .iter()
+                    .filter(|i| i.containers == 0)
+                    .map(|i| i.size)
+                    .sum(),
+            ),
         };
 
         let containers = df.containers.unwrap_or_default();
@@ -750,16 +870,30 @@ impl DockerConnection for EngineApiConnection {
         let volumes_entry = DiskUsageEntry {
             kind: "Local Volumes".to_string(),
             total_count: volumes.len().to_string(),
-            active: volumes.iter().filter(|v| vol_refs(v) > 0).count().to_string(),
+            active: volumes
+                .iter()
+                .filter(|v| vol_refs(v) > 0)
+                .count()
+                .to_string(),
             size: format_bytes(volumes.iter().map(vol_size).sum()),
-            reclaimable: format_bytes(volumes.iter().filter(|v| vol_refs(v) == 0).map(vol_size).sum()),
+            reclaimable: format_bytes(
+                volumes
+                    .iter()
+                    .filter(|v| vol_refs(v) == 0)
+                    .map(vol_size)
+                    .sum(),
+            ),
         };
 
         let build_cache = df.build_cache.unwrap_or_default();
         let build_cache_entry = DiskUsageEntry {
             kind: "Build Cache".to_string(),
             total_count: build_cache.len().to_string(),
-            active: build_cache.iter().filter(|b| b.in_use.unwrap_or(false)).count().to_string(),
+            active: build_cache
+                .iter()
+                .filter(|b| b.in_use.unwrap_or(false))
+                .count()
+                .to_string(),
             size: format_bytes(build_cache.iter().map(|b| b.size.unwrap_or(0)).sum()),
             reclaimable: format_bytes(
                 build_cache
@@ -770,7 +904,12 @@ impl DockerConnection for EngineApiConnection {
             ),
         };
 
-        Ok(vec![images_entry, containers_entry, volumes_entry, build_cache_entry])
+        Ok(vec![
+            images_entry,
+            containers_entry,
+            volumes_entry,
+            build_cache_entry,
+        ])
     }
 
     /// Build cache pruning has no `bollard` wrapper at all — it isn't part of
@@ -779,8 +918,9 @@ impl DockerConnection for EngineApiConnection {
     /// using a BuildKit builder), so this is just another call through the same shared,
     /// pooled `http` client as everything else here.
     async fn prune_build_cache(&self, all: bool) -> Result<String, AppError> {
-        let resp: models::BuildPruneResponse =
-            self.post_json("/build/prune", &[("all", all.to_string())]).await?;
+        let resp: models::BuildPruneResponse = self
+            .post_json("/build/prune", &[("all", all.to_string())])
+            .await?;
         Ok(format!(
             "Total reclaimed space: {}",
             format_bytes(resp.space_reclaimed.unwrap_or(0))
@@ -794,21 +934,35 @@ impl DockerConnection for EngineApiConnection {
     // without spawning a `wsl.exe` process to get it.
     async fn container_stats(&self, id: &str) -> Result<String, AppError> {
         let query = [("stream", "false".to_string())];
-        let raw: RawStats = self.get_json(&format!("/containers/{id}/stats"), &query).await?;
+        let raw: RawStats = self
+            .get_json(&format!("/containers/{id}/stats"), &query)
+            .await?;
 
         let cpu_perc = cpu_percent(&raw.cpu_stats, &raw.precpu_stats);
         let mem_used = mem_used_bytes(&raw.memory_stats);
         let mem_limit = raw.memory_stats.limit.unwrap_or(0);
-        let mem_perc = if mem_limit > 0 { mem_used as f64 / mem_limit as f64 * 100.0 } else { 0.0 };
+        let mem_perc = if mem_limit > 0 {
+            mem_used as f64 / mem_limit as f64 * 100.0
+        } else {
+            0.0
+        };
         let (rx, tx) = network_io(&raw.networks);
         let (block_read, block_write) = block_io(&raw.blkio_stats);
 
         let formatted = FormattedStats {
             cpu_perc: format!("{cpu_perc:.2}%"),
-            mem_usage: format!("{} / {}", format_bytes_binary(mem_used), format_bytes_binary(mem_limit)),
+            mem_usage: format!(
+                "{} / {}",
+                format_bytes_binary(mem_used),
+                format_bytes_binary(mem_limit)
+            ),
             mem_perc: format!("{mem_perc:.2}%"),
             net_io: format!("{} / {}", format_bytes(rx as i64), format_bytes(tx as i64)),
-            block_io: format!("{} / {}", format_bytes(block_read as i64), format_bytes(block_write as i64)),
+            block_io: format!(
+                "{} / {}",
+                format_bytes(block_read as i64),
+                format_bytes(block_write as i64)
+            ),
             pids: raw.pids_stats.current.unwrap_or(0).to_string(),
         };
         serde_json::to_string(&formatted).map_err(|e| AppError::ParseError(e.to_string()))
@@ -826,8 +980,9 @@ impl DockerConnection for EngineApiConnection {
         query.push(("size", "true".to_string()));
         // `size=true` makes the daemon compute the container's writable-layer size, which
         // is markedly slower than a plain list — same reason `system_df` waits longer.
-        let containers: Vec<models::ContainerSummary> =
-            self.get_json_within("/containers/json", &query, Self::PATIENT).await?;
+        let containers: Vec<models::ContainerSummary> = self
+            .get_json_within("/containers/json", &query, Self::PATIENT)
+            .await?;
         let c = containers
             .into_iter()
             .next()

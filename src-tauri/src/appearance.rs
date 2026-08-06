@@ -9,7 +9,11 @@ use tauri::WebviewWindow;
 ///   so Mica never disagrees with the rest of the UI.
 /// - Acrylic has no such auto mode at all — it's just a tinted blur, so the tint color
 ///   itself is what makes it read as "light" or "dark".
-pub fn apply_window_material(window: &WebviewWindow, material: &str, dark: bool) -> Result<(), String> {
+pub fn apply_window_material(
+    window: &WebviewWindow,
+    material: &str,
+    dark: bool,
+) -> Result<(), String> {
     // Best-effort: clearing an effect that was never applied returns an error we don't
     // care about (there's nothing to undo), and Mica/Acrylic are mutually exclusive so
     // only one of these ever actually had something to clear.
@@ -22,7 +26,11 @@ pub fn apply_window_material(window: &WebviewWindow, material: &str, dark: bool)
             // Roughly matches Windows' own Fluent acrylic defaults for light/dark surfaces.
             // Alpha kept low (not ~200/255) so the blurred desktop/windows behind actually
             // read through the tint instead of washing out to a near-solid color.
-            let tint = if dark { (30, 30, 30, 125) } else { (243, 243, 243, 125) };
+            let tint = if dark {
+                (30, 30, 30, 125)
+            } else {
+                (243, 243, 243, 125)
+            };
             window_vibrancy::apply_acrylic(window, Some(tint)).map_err(|e| e.to_string())
         }
         // "solid" (or anything else): already cleared above, nothing further to apply —

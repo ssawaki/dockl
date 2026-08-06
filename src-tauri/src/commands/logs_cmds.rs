@@ -17,12 +17,21 @@ pub async fn stream_logs(
         .clone()
         .ok_or(AppError::NotConfigured)?;
 
-    let docker_args = vec!["logs".into(), "-f".into(), "--tail".into(), tail.to_string(), id];
+    let docker_args = vec![
+        "logs".into(),
+        "-f".into(),
+        "--tail".into(),
+        tail.to_string(),
+        id,
+    ];
     state.log_streams.start(app, distro, docker_args).await
 }
 
 #[tauri::command]
-pub async fn stop_log_stream(state: State<'_, AppState>, stream_id: String) -> Result<(), AppError> {
+pub async fn stop_log_stream(
+    state: State<'_, AppState>,
+    stream_id: String,
+) -> Result<(), AppError> {
     state.log_streams.stop(&stream_id).await
 }
 

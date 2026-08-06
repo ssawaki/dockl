@@ -17,6 +17,6 @@ pub use connection::ConnectionMode;
 pub use events::DockerEventManager;
 pub use logs::LogStreamManager;
 pub use types::{
-    ContainerActionKind, ContainerDetail, ContainerSummary, DiskUsageEntry, ImageSummary, NetworkSummary,
-    VolumeSummary,
+    ContainerActionKind, ContainerDetail, ContainerSummary, DiskUsageEntry, ImageSummary,
+    NetworkSummary, VolumeSummary,
 };

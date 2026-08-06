@@ -80,8 +80,8 @@ impl DockerConnection for ShellOutConnection {
     async fn inspect_container(&self, id: &str) -> Result<ContainerDetail, AppError> {
         let output = wsl::run_docker(&self.distro, &["inspect", id]).await?;
 
-        let mut parsed: Vec<InspectRaw> = serde_json::from_str(&output)
-            .map_err(|e| AppError::ParseError(e.to_string()))?;
+        let mut parsed: Vec<InspectRaw> =
+            serde_json::from_str(&output).map_err(|e| AppError::ParseError(e.to_string()))?;
 
         let raw = parsed
             .pop()
@@ -97,7 +97,8 @@ impl DockerConnection for ShellOutConnection {
             .lines()
             .filter(|line| !line.trim().is_empty())
             .map(|line| {
-                serde_json::from_str::<DockerImageRaw>(line).map_err(|e| AppError::ParseError(e.to_string()))
+                serde_json::from_str::<DockerImageRaw>(line)
+                    .map_err(|e| AppError::ParseError(e.to_string()))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -124,7 +125,8 @@ impl DockerConnection for ShellOutConnection {
     }
 
     async fn list_volumes(&self) -> Result<Vec<VolumeSummary>, AppError> {
-        let output = wsl::run_docker(&self.distro, &["volume", "ls", "--format", "{{json .}}"]).await?;
+        let output =
+            wsl::run_docker(&self.distro, &["volume", "ls", "--format", "{{json .}}"]).await?;
 
         output
             .lines()
@@ -155,7 +157,8 @@ impl DockerConnection for ShellOutConnection {
     }
 
     async fn list_networks(&self) -> Result<Vec<NetworkSummary>, AppError> {
-        let output = wsl::run_docker(&self.distro, &["network", "ls", "--format", "{{json .}}"]).await?;
+        let output =
+            wsl::run_docker(&self.distro, &["network", "ls", "--format", "{{json .}}"]).await?;
 
         output
             .lines()
@@ -178,7 +181,8 @@ impl DockerConnection for ShellOutConnection {
     }
 
     async fn system_df(&self) -> Result<Vec<DiskUsageEntry>, AppError> {
-        let output = wsl::run_docker(&self.distro, &["system", "df", "--format", "{{json .}}"]).await?;
+        let output =
+            wsl::run_docker(&self.distro, &["system", "df", "--format", "{{json .}}"]).await?;
 
         output
             .lines()
@@ -206,7 +210,11 @@ impl DockerConnection for ShellOutConnection {
     // prints plain lines either way. `--no-stream` sidesteps this: it renders the table
     // exactly once (no live redraw) and exits, giving a clean single JSON line.
     async fn container_stats(&self, id: &str) -> Result<String, AppError> {
-        wsl::run_docker(&self.distro, &["stats", "--no-stream", "--format", "{{json .}}", id]).await
+        wsl::run_docker(
+            &self.distro,
+            &["stats", "--no-stream", "--format", "{{json .}}", id],
+        )
+        .await
     }
 
     async fn host_cpu_count(&self) -> Result<u32, AppError> {
@@ -228,7 +236,15 @@ impl DockerConnection for ShellOutConnection {
         let filter = format!("id={id}");
         let output = wsl::run_docker(
             &self.distro,
-            &["ps", "-a", "-s", "--filter", &filter, "--format", "{{.Size}}"],
+            &[
+                "ps",
+                "-a",
+                "-s",
+                "--filter",
+                &filter,
+                "--format",
+                "{{.Size}}",
+            ],
         )
         .await?;
         Ok(output.trim().to_string())

@@ -97,7 +97,11 @@ pub async fn start_wsl_shell_session(
 }
 
 #[tauri::command]
-pub fn pty_write(state: State<'_, AppState>, session_id: String, data: String) -> Result<(), AppError> {
+pub fn pty_write(
+    state: State<'_, AppState>,
+    session_id: String,
+    data: String,
+) -> Result<(), AppError> {
     state.pty_sessions.write(&session_id, &data)
 }
 

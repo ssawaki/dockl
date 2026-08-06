@@ -37,7 +37,11 @@ struct ChildPipe {
 }
 
 impl AsyncRead for ChildPipe {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<std::io::Result<()>> {
         let before = buf.filled().len();
         let polled = Pin::new(&mut self.stdout).poll_read(cx, buf);
         if let Poll::Ready(Ok(())) = &polled {
@@ -56,7 +60,11 @@ impl AsyncRead for ChildPipe {
 }
 
 impl AsyncWrite for ChildPipe {
-    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<std::io::Result<usize>> {
         Pin::new(&mut self.stdin).poll_write(cx, buf)
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
@@ -133,7 +141,14 @@ impl DialStdioConnection {
     /// Spawns a fresh relay process and completes an HTTP/1.1 handshake over its stdio.
     async fn dial(&self) -> Result<SendRequest<Full<Bytes>>, AppError> {
         let mut child = wsl_command()
-            .args(["-d", &self.distro, "--exec", "docker", "system", "dial-stdio"])
+            .args([
+                "-d",
+                &self.distro,
+                "--exec",
+                "docker",
+                "system",
+                "dial-stdio",
+            ])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -145,8 +160,14 @@ impl DialStdioConnection {
             .spawn()
             .map_err(|e| AppError::WslUnavailable(e.to_string()))?;
 
-        let stdin = child.stdin.take().ok_or_else(|| AppError::CommandFailed("no stdin".into()))?;
-        let stdout = child.stdout.take().ok_or_else(|| AppError::CommandFailed("no stdout".into()))?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| AppError::CommandFailed("no stdin".into()))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| AppError::CommandFailed("no stdout".into()))?;
         let stderr = child.stderr.take();
 
         // Reset per dial: the buffer describes the relay currently on the other end, and
@@ -154,7 +175,11 @@ impl DialStdioConnection {
         if let Ok(mut head) = self.head.lock() {
             head.clear();
         }
-        let pipe = ChildPipe { stdin, stdout, head: self.head.clone() };
+        let pipe = ChildPipe {
+            stdin,
+            stdout,
+            head: self.head.clone(),
+        };
         let (sender, conn) = hyper::client::conn::http1::handshake(TokioIo::new(pipe))
             .await
             .map_err(|e| AppError::CommandFailed(e.to_string()))?;
@@ -291,7 +316,10 @@ impl DialStdioConnection {
             .and_then(|v| v.get("message")?.as_str().map(str::to_string))
             .unwrap_or(text);
         // A Docker-level error, not a transport one — the relay is fine and answering.
-        Err((AppError::CommandFailed(format!("{status}: {message}")), false))
+        Err((
+            AppError::CommandFailed(format!("{status}: {message}")),
+            false,
+        ))
     }
 }
 
@@ -320,11 +348,17 @@ mod tests {
         let distro = std::env::var("DOCKL_TEST_DISTRO").unwrap_or_else(|_| "Ubuntu".to_string());
         let conn = DialStdioConnection::new(distro);
 
-        let ping = conn.request(Method::GET, "/_ping", &[]).await.expect("ping failed");
+        let ping = conn
+            .request(Method::GET, "/_ping", &[])
+            .await
+            .expect("ping failed");
         assert_eq!(&ping[..], b"OK", "unexpected /_ping body");
 
         // A second call must reuse the relay opened by the first rather than redialing.
-        let version = conn.request(Method::GET, "/version", &[]).await.expect("version failed");
+        let version = conn
+            .request(Method::GET, "/version", &[])
+            .await
+            .expect("version failed");
         assert!(version.starts_with(b"{"), "/version was not JSON");
 
         // Query parameters have to survive urlencoding: `filters` is a JSON blob, which
@@ -342,7 +376,10 @@ mod tests {
             .expect_err("expected a 404");
         let text = err.to_string();
         assert!(text.contains("404"), "error lost its status: {text}");
-        assert!(!text.contains("{\"message\""), "error body was not unwrapped: {text}");
+        assert!(
+            !text.contains("{\"message\""),
+            "error body was not unwrapped: {text}"
+        );
     }
 
     /// `wsl.exe` reports its own failures on stdout, so they arrive on the very stream
@@ -387,10 +424,19 @@ mod tests {
         let distro = std::env::var("DOCKL_TEST_DISTRO").unwrap_or_else(|_| "Ubuntu".to_string());
         let conn = DialStdioConnection::new(distro.clone());
 
-        conn.request(Method::GET, "/_ping", &[]).await.expect("initial ping failed");
+        conn.request(Method::GET, "/_ping", &[])
+            .await
+            .expect("initial ping failed");
 
         let status = wsl_command()
-            .args(["-d", &distro, "--exec", "pkill", "-f", "docker system dial-stdio"])
+            .args([
+                "-d",
+                &distro,
+                "--exec",
+                "pkill",
+                "-f",
+                "docker system dial-stdio",
+            ])
             .status()
             .await
             .expect("could not run pkill");

@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use crate::error::AppError;
 
 use super::types::{
-    ContainerActionKind, ContainerDetail, ContainerSummary, DiskUsageEntry, ImageSummary, NetworkSummary,
-    VolumeSummary,
+    ContainerActionKind, ContainerDetail, ContainerSummary, DiskUsageEntry, ImageSummary,
+    NetworkSummary, VolumeSummary,
 };
 
 /// Which strategy is used to talk to the Docker daemon running inside WSL2.
@@ -27,11 +27,8 @@ pub enum ConnectionMode {
 #[async_trait]
 pub trait DockerConnection: Send + Sync {
     async fn list_containers(&self, all: bool) -> Result<Vec<ContainerSummary>, AppError>;
-    async fn container_action(
-        &self,
-        id: &str,
-        action: ContainerActionKind,
-    ) -> Result<(), AppError>;
+    async fn container_action(&self, id: &str, action: ContainerActionKind)
+        -> Result<(), AppError>;
     async fn inspect_container(&self, id: &str) -> Result<ContainerDetail, AppError>;
     async fn list_images(&self) -> Result<Vec<ImageSummary>, AppError>;
     async fn remove_image(&self, id: &str) -> Result<(), AppError>;

@@ -161,7 +161,8 @@ impl PtySessionManager {
                                 // character but genuinely invalid data — flush it
                                 // lossily rather than buffering forever.
                                 if leftover.len() >= 4 {
-                                    let _ = app.emit(&data_event, String::from_utf8_lossy(&leftover));
+                                    let _ =
+                                        app.emit(&data_event, String::from_utf8_lossy(&leftover));
                                     leftover.clear();
                                 }
                             }
