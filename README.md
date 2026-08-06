@@ -1,8 +1,8 @@
 # Dockl
 
-WSL2 上の Docker を Windows 11 から操作する、軽量なネイティブ GUI。
+**不遇なWindowsユーザー向けの、Dockerダッシュボードアプリ。**
 
-Docker Desktop を入れずに WSL2 へ直接 Docker を導入している環境では、Windows 側からコンテナの状態を見る手段がありません。Dockl はその一点のために作られています。WSL2 側には**何もインストールしません**。
+Docker Desktop を入れずに WSL2 へ直接 Docker を導入している環境では、Windows 側からコンテナの状態を見る手段がありません。Dockl はその一点のために作られた、Windows 11 ネイティブの軽量 GUI です。WSL2 側には**何もインストールしません**。
 
 ## 特徴
 
