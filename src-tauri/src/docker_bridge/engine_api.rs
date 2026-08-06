@@ -16,9 +16,9 @@ use crate::error::AppError;
 use super::connection::DockerConnection;
 use super::dial_stdio::DialStdioConnection;
 use super::types::{
-    cpu_limit_cores, restart_policy_label, sort_port_forwards, ContainerActionKind,
-    ContainerDetail, ContainerSummary, DiskUsageEntry, ImageSummary, InspectHostConfig,
-    InspectRestartPolicy, MountInfo, NetworkSummary, PortForward, VolumeSummary,
+    ContainerActionKind, ContainerDetail, ContainerSummary, DiskUsageEntry, ImageSummary,
+    InspectHostConfig, InspectRestartPolicy, MountInfo, NetworkSummary, PortForward, VolumeSummary,
+    cpu_limit_cores, restart_policy_label, sort_port_forwards,
 };
 
 /// How an `EngineApiConnection` reaches the Docker Engine API. Both speak the exact same
@@ -495,11 +495,7 @@ fn mem_used_bytes(mem: &MemoryStats) -> u64 {
         Some(MemoryStatsStats::V2(v2)) => v2.inactive_file,
         None => 0,
     };
-    if cache < usage {
-        usage - cache
-    } else {
-        usage
-    }
+    if cache < usage { usage - cache } else { usage }
 }
 
 /// Sums rx/tx bytes across every network interface, matching `docker stats`'s NET I/O

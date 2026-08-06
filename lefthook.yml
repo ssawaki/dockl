@@ -29,10 +29,11 @@ pre-commit:
     # `rustfmt` directly rather than `cargo fmt`, which only knows how to format an entire
     # crate — that would quietly reformat files the commit never touched and leave them
     # behind as unstaged changes. Edition has to be passed explicitly for the same reason:
-    # without Cargo there's no manifest to read it from.
+    # without Cargo there's no manifest to read it from, so this has to be kept in step
+    # with `edition` in src-tauri/Cargo.toml by hand.
     rustfmt:
       glob: "*.rs"
-      run: rustfmt --edition 2021 {staged_files}
+      run: rustfmt --edition 2024 {staged_files}
       stage_fixed: true
 
 # Not a Git hook — invoked by hand via `npm run check:all`. The two type checks the

@@ -5,9 +5,9 @@ use crate::wsl;
 
 use super::connection::DockerConnection;
 use super::types::{
-    fold_docker_images, ContainerActionKind, ContainerDetail, ContainerSummary, DiskUsageEntry,
-    DockerDiskUsageRaw, DockerImageRaw, DockerNetworkRaw, DockerPsRaw, DockerVolumeRaw,
-    ImageSummary, InspectRaw, NetworkSummary, VolumeSummary,
+    ContainerActionKind, ContainerDetail, ContainerSummary, DiskUsageEntry, DockerDiskUsageRaw,
+    DockerImageRaw, DockerNetworkRaw, DockerPsRaw, DockerVolumeRaw, ImageSummary, InspectRaw,
+    NetworkSummary, VolumeSummary, fold_docker_images,
 };
 
 /// "ブリッジなし" connection mode: every call shells out to `wsl.exe -- docker ...`.

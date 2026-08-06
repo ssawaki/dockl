@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bollard::{Docker, API_DEFAULT_VERSION};
+use bollard::{API_DEFAULT_VERSION, Docker};
 use tauri::{AppHandle, State};
 
 use crate::docker_bridge::shell_out::ShellOutConnection;

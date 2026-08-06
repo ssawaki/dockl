@@ -33,7 +33,7 @@ pub async fn compose_action(
         other => {
             return Err(AppError::CommandFailed(format!(
                 "unknown compose action: {other}"
-            )))
+            )));
         }
     }
 

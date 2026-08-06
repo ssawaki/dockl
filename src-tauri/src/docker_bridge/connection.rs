@@ -28,7 +28,7 @@ pub enum ConnectionMode {
 pub trait DockerConnection: Send + Sync {
     async fn list_containers(&self, all: bool) -> Result<Vec<ContainerSummary>, AppError>;
     async fn container_action(&self, id: &str, action: ContainerActionKind)
-        -> Result<(), AppError>;
+    -> Result<(), AppError>;
     async fn inspect_container(&self, id: &str) -> Result<ContainerDetail, AppError>;
     async fn list_images(&self) -> Result<Vec<ImageSummary>, AppError>;
     async fn remove_image(&self, id: &str) -> Result<(), AppError>;
