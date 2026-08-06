@@ -112,6 +112,7 @@
     href={item.href}
     class="sidebar-item"
     class:active
+    aria-current={active ? "page" : undefined}
     data-sveltekit-keepfocus
     data-roving-item
     onpointerenter={(e) => openTip(e.currentTarget, item.label)}

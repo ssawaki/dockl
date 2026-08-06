@@ -32,7 +32,7 @@
   class="master-list dockl-surface"
   style="width: {$masterListWidth}px"
   role="tree"
-  use:rovingFocus={{ selector: "[data-roving-item]" }}
+  use:rovingFocus={{ selector: "[data-roving-item]", fallbackToContainer: true }}
 >
   {@render children()}
 
@@ -53,6 +53,14 @@
     overflow-y: auto;
     padding: 4px;
     gap: 1px;
+  }
+
+  /* Until a row is selected the list itself is the tab stop (`fallbackToContainer`), so
+     it needs the same ring the rows get from theme.css — without it, tabbing in would
+     leave no visible sign of where focus went. */
+  .master-list:focus-visible {
+    outline: 2px solid var(--dockl-accent);
+    outline-offset: -2px;
   }
 
   /* A flex item shrinks to fit by default, so once the list is taller than the panel
