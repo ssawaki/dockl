@@ -53,7 +53,15 @@
     detailOverride?: ContainerDetail | null;
   } = $props();
 
-  let detail = $state<ContainerDetail | null>(null);
+  /** What `inspect_container` last returned. Read through `detail`, never directly. */
+  let fetchedDetail = $state<ContainerDetail | null>(null);
+
+  /**
+   * Derived rather than assigned, so `detailOverride` doesn't need an effect to keep it
+   * installed — it simply wins for as long as it's set. Nothing but routes/dev-capture
+   * passes one, so in the app this is always the fetched value.
+   */
+  let detail = $derived(detailOverride ?? fetchedDetail);
   let loading = $state(false);
   let errorMessage = $state<string | null>(null);
 
@@ -84,11 +92,11 @@
     try {
       const result = await inspectContainer(id);
       if (token !== loadToken) return;
-      detail = result;
+      fetchedDetail = result;
     } catch (e) {
       if (token !== loadToken) return;
       errorMessage = formatError(e);
-      detail = null;
+      fetchedDetail = null;
     } finally {
       if (token === loadToken) loading = false;
     }
@@ -99,13 +107,10 @@
   // per intermediate selection — each an `inspect_container` call (a `wsl.exe` spawn in
   // shell-out mode) — even though only the final selection's result ever gets shown.
   $effect(() => {
-    if (detailOverride) {
-      detail = detailOverride;
-      loading = false;
-      return;
-    }
+    // Nothing to fetch when the caller supplied the data — `detail` already resolves to it.
+    if (detailOverride) return;
     if (!containerId) {
-      detail = null;
+      fetchedDetail = null;
       return;
     }
     const id = containerId;

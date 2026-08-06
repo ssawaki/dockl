@@ -75,23 +75,27 @@
   // the rail, so a tooltip would just race the label it's standing in for.
   let tooltipDisabled = $derived(pinnedExpanded || $sidebarHoverExpand);
 
-  /** The item being hovered/focused, i.e. the one the tooltip is currently labelling. */
-  let tip = $state<{ el: HTMLElement; label: string } | null>(null);
+  /** The item the pointer or keyboard focus is currently on, tooltip or no tooltip. */
+  let hovered = $state<{ el: HTMLElement; label: string } | null>(null);
+
+  /**
+   * The item a tooltip should be labelling, or null for none.
+   *
+   * Derived rather than assigned from an effect: the rail can widen (or get pinned open)
+   * while a tooltip is up, and expressing that as "there is no tooltip while tooltips are
+   * disabled" leaves nothing to keep in sync. It also reads better on the way back — with
+   * the pointer still on an item, un-pinning brings the tooltip back, where clearing the
+   * state on the way out would have thrown away the fact that anything was hovered.
+   */
+  let tip = $derived(tooltipDisabled ? null : hovered);
 
   function openTip(el: HTMLElement, label: string) {
-    if (tooltipDisabled) return;
-    tip = { el, label };
+    hovered = { el, label };
   }
 
   function closeTip() {
-    tip = null;
+    hovered = null;
   }
-
-  // The rail can widen (or get pinned open) while a tooltip is up — expanding to show
-  // the very label the tooltip is standing in for.
-  $effect(() => {
-    if (tooltipDisabled) tip = null;
-  });
 </script>
 
 {#snippet navItem(item: (typeof mainItems)[number])}

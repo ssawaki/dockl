@@ -3,7 +3,7 @@
   import { listImages, removeImage, pruneImages } from "$lib/ipc/images";
   import { connection } from "$lib/stores/connection";
   import { refreshOnDockerEvents } from "$lib/dockerEvents.svelte";
-  import { refreshOnF5 } from "$lib/shortcuts.svelte";
+  import { f5RefreshHandler } from "$lib/shortcuts";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
   import Icon from "$lib/components/ui/Icon.svelte";
   import PageHeader from "$lib/components/layout/PageHeader.svelte";
@@ -38,7 +38,6 @@
   // this just loads this page's own data once that's confirmed, then reacts to `image`
   // events (pull/tag/untag/delete/...) instead of polling.
   refreshOnDockerEvents(() => $connection.status === "connected", ["image"], refresh);
-  refreshOnF5(refresh);
 
   let selectedId = $state<string | null>(null);
   // Resolved from the live list rather than stored, so a refresh (or a removal) can't
@@ -103,6 +102,8 @@
     }
   }
 </script>
+
+<svelte:window onkeydown={f5RefreshHandler(refresh)} />
 
 <div class="page-view">
   <PageHeader title={$t("nav.images")}>

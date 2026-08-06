@@ -5,7 +5,7 @@
   import { getDiskUsage, pruneBuildCache } from "$lib/ipc/system";
   import { connection } from "$lib/stores/connection";
   import { refreshOnDockerEvents } from "$lib/dockerEvents.svelte";
-  import { refreshOnF5 } from "$lib/shortcuts.svelte";
+  import { f5RefreshHandler } from "$lib/shortcuts";
   import { parseSize, formatBytes } from "$lib/dockerStats";
   import LoadingState from "$lib/components/ui/LoadingState.svelte";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
@@ -68,7 +68,6 @@
     ["container", "image", "volume"],
     refresh,
   );
-  refreshOnF5(refresh);
 
   let pruneConfirmOpen = $state(false);
   // Off by default, matching the image/volume prune dialogs: reclaiming cache Docker
@@ -100,6 +99,8 @@
     }
   }
 </script>
+
+<svelte:window onkeydown={f5RefreshHandler(refresh)} />
 
 <div class="page-view">
   <PageHeader title={$t("nav.storage")}>

@@ -12,7 +12,7 @@
   import { pushToast, resolveToast } from "$lib/stores/toasts";
   import { connection } from "$lib/stores/connection";
   import { refreshOnDockerEvents } from "$lib/dockerEvents.svelte";
-  import { refreshOnF5 } from "$lib/shortcuts.svelte";
+  import { f5RefreshHandler } from "$lib/shortcuts";
   import type { ContainerSummary, ContainerActionKind, DetailTabId } from "$lib/types";
   import { get } from "svelte/store";
   import { t, type MessageKey } from "$lib/stores/i18n";
@@ -126,8 +126,9 @@
   }
 
   refreshOnDockerEvents(() => $connection.status === "connected", ["container"], refresh);
-  refreshOnF5(manualRefresh);
 </script>
+
+<svelte:window onkeydown={f5RefreshHandler(manualRefresh)} />
 
 <div class="page-view">
   <PageHeader title={$t("nav.containers")}>
