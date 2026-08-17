@@ -1,6 +1,9 @@
 [package]
 name = "dockl"
-version = "0.1.0"
+# アプリのバージョンは package.json が単一の真実の源。
+# ここは tauri.conf.json 側で使われないためプレースホルダで固定する
+# (Cargo.lock も連動して固定され、バージョン更新の同期対象から外れる)。
+version = "0.0.0"
 description = "Native Windows 11 GUI for Docker running inside WSL2"
 authors = ["you"]
 edition = "2024"
