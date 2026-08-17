@@ -58,8 +58,15 @@
 
   // Dev-only: links to the design reference page. The whole route is stripped out of
   // production builds (see scripts/build-without-dev-routes.mjs), and `import.meta.env.DEV`
-  // is statically replaced with `false` in that build, so this branch — link and all — is
-  // dead-code-eliminated from the compiled output too.
+  // is statically replaced with `false` in that build, so the link never renders there.
+  //
+  // It isn't dead-code-eliminated, though, whatever the shape of this suggests. Svelte
+  // compiles an `{#if}` branch into a function handed to a runtime helper, so the body
+  // stays reachable as far as Rollup can tell however static the condition is: the href,
+  // the label and both beaker icons ship in the bundle regardless, a few hundred bytes
+  // nothing can reach. Building the item inline at the use site doesn't change that —
+  // that was tried. It'd take moving the link into its own dynamically imported
+  // component, which is a lot of machinery for a few hundred bytes.
   const devDesignItem = {
     href: resolve("/dev-design"),
     label: "Design Patterns",
