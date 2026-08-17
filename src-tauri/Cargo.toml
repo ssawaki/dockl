@@ -20,6 +20,16 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+# Windows-only, for the system menu in system_menu.rs. `windows` 0.61 is already in the
+# lock file by way of Tauri's own dependencies, so naming it here pins no new version —
+# it only turns on the feature groups those call sites need.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"

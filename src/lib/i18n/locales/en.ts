@@ -56,6 +56,10 @@ export const en = {
   "titlebar.toggleSidebar": "Toggle sidebar",
   "titlebar.minimize": "Minimize",
   "titlebar.maximize": "Maximize",
+  "titlebar.appMenu": "System menu",
+
+  "about.title": "About Dockl",
+  "about.version": "Version {version}",
 
   // Docker action verbs — kept in English in the ja-en catalog.
   "action.start": "Start",

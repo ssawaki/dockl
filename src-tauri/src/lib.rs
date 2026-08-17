@@ -5,6 +5,7 @@ mod docker_bridge;
 mod error;
 mod pty_session;
 mod state;
+mod system_menu;
 mod tray;
 mod wsl;
 
@@ -34,6 +35,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
+            system_menu::show_system_menu,
             commands::list_containers,
             commands::container_action,
             commands::inspect_container,
@@ -54,6 +56,7 @@ pub fn run() {
             commands::list_networks,
             commands::remove_network,
             commands::prune_networks,
+            commands::app_commit_hash,
             commands::get_disk_usage,
             commands::prune_build_cache,
             commands::stream_logs,

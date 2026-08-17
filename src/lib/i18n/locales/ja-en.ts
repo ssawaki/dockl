@@ -51,6 +51,10 @@ export const jaEn: Record<MessageKey, string> = {
   "titlebar.toggleSidebar": "サイドバーの開閉",
   "titlebar.minimize": "最小化",
   "titlebar.maximize": "最大化",
+  "titlebar.appMenu": "システムメニュー",
+
+  "about.title": "Dockl について",
+  "about.version": "バージョン {version}",
 
   "action.start": "Start",
   "action.stop": "Stop",

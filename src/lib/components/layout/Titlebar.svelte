@@ -10,6 +10,8 @@
   import dismissIcon from "@fluentui/svg-icons/icons/dismiss_20_regular.svg?raw";
   import terminalIcon from "@fluentui/svg-icons/icons/window_console_20_regular.svg?raw";
   import panelLeftIcon from "@fluentui/svg-icons/icons/panel_left_20_regular.svg?raw";
+  import { invoke } from "@tauri-apps/api/core";
+  import AboutDialog from "$lib/components/ui/AboutDialog.svelte";
 
   const appWindow = getCurrentWindow();
 
@@ -54,6 +56,45 @@
     void setSidebarToggleExpanded(!$sidebarToggleExpanded);
   }
 
+  // Not a menu this app builds: `show_system_menu` opens the window's real Win32 one (see
+  // src-tauri/src/system_menu.rs). About is the single entry appended to it, and the only
+  // one that comes back here — the command dispatches the rest itself.
+  let iconBtn: HTMLElement | undefined = $state();
+  let aboutOpen = $state(false);
+
+  async function showAppMenu(x: number, y: number) {
+    try {
+      // CSS pixels; the Rust side converts to the screen coordinates TrackPopupMenu wants.
+      const about = await invoke<boolean>("show_system_menu", {
+        x,
+        y,
+        aboutLabel: $t("about.title"),
+      });
+      if (about) aboutOpen = true;
+    } catch (e) {
+      console.error("system menu failed to open", e);
+    }
+  }
+
+  function openAppMenuAtIcon() {
+    const rect = iconBtn?.getBoundingClientRect();
+    // 36 is the title bar's height, so the fallback lands just under it.
+    void showAppMenu(rect?.left ?? 0, rect?.bottom ?? 36);
+  }
+
+  // Windows opens this menu from three places, and a window drawing its own chrome has to
+  // wire all three: the icon, a right-click anywhere on the title bar, and Alt+Space.
+  function handleTitlebarContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    void showAppMenu(e.clientX, e.clientY);
+  }
+
+  function handleAppMenuShortcut(e: KeyboardEvent) {
+    if (e.key !== " " || !e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    openAppMenuAtIcon();
+  }
+
   // Ctrl+` toggles the WSL shell, matching VS Code/Windows Terminal's terminal binding.
   // Shift is deliberately not excluded: on a JIS keyboard ` *is* Shift+@, so requiring
   // it to be up would make the shortcut unreachable there. That also means Ctrl+Shift+`
@@ -85,9 +126,12 @@
   }
 </script>
 
-<svelte:window onkeydowncapture={handleShellShortcut} />
+<svelte:window onkeydowncapture={handleShellShortcut} onkeydown={handleAppMenuShortcut} />
 
-<div class="titlebar" data-tauri-drag-region>
+<!-- No role or keyboard handler on the bar itself: Alt+Space opens the same menu, and is
+     the binding Windows gives it. -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="titlebar" data-tauri-drag-region oncontextmenu={handleTitlebarContextMenu}>
   <!-- Every button here carries `tabindex="-1"`: this is window chrome, and Windows' own
        title bar buttons aren't in the Tab order either — tabbing into the app should land
        on its content, not spend five stops on the frame first. They stay clickable, and
@@ -105,6 +149,20 @@
     aria-label={$t("titlebar.toggleSidebar")}
   >
     <Icon svg={panelLeftIcon} size={16} />
+  </button>
+  <!-- After the pane toggle rather than in the corner, which is what WinUI's own TitleBar
+       control does — its anatomy runs back button, pane toggle, left header, icon, title.
+       The corner stays with the toggle: that's the control lining up with the navigation
+       rail below it. -->
+  <button
+    bind:this={iconBtn}
+    class="titlebar-icon-btn"
+    tabindex="-1"
+    onclick={openAppMenuAtIcon}
+    aria-label={$t("titlebar.appMenu")}
+    aria-haspopup="menu"
+  >
+    <img src="/app-icon.png" alt="" width="16" height="16" />
   </button>
   <div class="titlebar-title" data-tauri-drag-region>Dockl</div>
   {#if $connection.distro}
@@ -149,6 +207,10 @@
   </div>
 </div>
 
+{#if aboutOpen}
+  <AboutDialog onClose={() => (aboutOpen = false)} />
+{/if}
+
 {#if shellMounted}
   <WslShellDialog hidden={!shellVisible} onClose={hideShell} onEnded={endShell} />
 {/if}
@@ -164,9 +226,23 @@
     user-select: none;
   }
 
+  /* Narrower than the 44px chrome buttons, and alone in taking no hover background:
+     Windows' own title bar icon behaves this way too. It reads as the window's mark
+     rather than a fourth control in the row. */
+  .titlebar-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    cursor: default;
+  }
+
   .titlebar-title {
     flex: 1;
-    padding-left: 12px;
+    padding-left: 8px;
     font-size: 12px;
     color: var(--dockl-text-secondary);
   }
@@ -196,7 +272,11 @@
     border: none;
     background: transparent;
     color: var(--dockl-text-secondary);
-    cursor: pointer;
+    /* Every button in this bar keeps the arrow, as Windows' own title bars do — including
+       the ones apps add for themselves. Splitting it by what each button acts on (the
+       window, or the app) is a distinction nobody can see in a single 36px strip; what
+       does carry the affordance is the hover background. */
+    cursor: default;
   }
 
   .titlebar-btn:hover {
