@@ -21,6 +21,9 @@
     type ConnectionMode,
   } from "$lib/connection";
   import { TCP_BRIDGE_PORT } from "$lib/tcpBridge";
+  import { appName } from "$lib/branding";
+  import { buildInfo } from "$lib/buildInfo";
+  import CopyIconButton from "$lib/components/ui/CopyIconButton.svelte";
   import { connection } from "$lib/stores/connection";
   import {
     themeMode,
@@ -228,6 +231,24 @@
   </section>
 
   <section class="dockl-surface">
+    <h2>{$t("settings.tray.heading")}</h2>
+    <!-- svelte-ignore a11y_label_has_associated_control -->
+    <label class="row toggle-row">
+      <fluent-switch checked={trayEnabled} onchange={toggleTray}></fluent-switch>
+      <span>{$t("settings.tray.toggle")}</span>
+    </label>
+  </section>
+
+  <section class="dockl-surface">
+    <h2>{$t("settings.autostart.heading")}</h2>
+    <!-- svelte-ignore a11y_label_has_associated_control -->
+    <label class="row toggle-row">
+      <fluent-switch checked={autostartEnabled} onchange={toggleAutostart}></fluent-switch>
+      <span>{$t("settings.autostart.toggle")}</span>
+    </label>
+  </section>
+
+  <section class="dockl-surface">
     <h2>{$t("settings.connection.heading")}</h2>
     <p class="section-desc">{$t("settings.connection.description")}</p>
 
@@ -298,23 +319,15 @@
     </div>
   </section>
 
-  <section class="dockl-surface">
-    <h2>{$t("settings.tray.heading")}</h2>
-    <!-- svelte-ignore a11y_label_has_associated_control -->
-    <label class="row toggle-row">
-      <fluent-switch checked={trayEnabled} onchange={toggleTray}></fluent-switch>
-      <span>{$t("settings.tray.toggle")}</span>
-    </label>
-  </section>
-
-  <section class="dockl-surface">
-    <h2>{$t("settings.autostart.heading")}</h2>
-    <!-- svelte-ignore a11y_label_has_associated_control -->
-    <label class="row toggle-row">
-      <fluent-switch checked={autostartEnabled} onchange={toggleAutostart}></fluent-switch>
-      <span>{$t("settings.autostart.toggle")}</span>
-    </label>
-  </section>
+  {#await buildInfo() then build}
+    <p class="build">
+      {appName}
+      {build.label}
+      <CopyIconButton value={build.copyValue} />
+    </p>
+  {:catch}
+    <!-- Deliberately empty: a failed read shouldn't take the settings page with it. -->
+  {/await}
 </div>
 
 {#if tcpEndpointDialogOpen}
@@ -407,6 +420,16 @@
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  .build {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--dockl-text-secondary);
   }
 
   .appearance-group {
