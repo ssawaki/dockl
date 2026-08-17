@@ -1,23 +1,15 @@
 <script lang="ts">
-  import { getVersion } from "@tauri-apps/api/app";
-  import { invoke } from "@tauri-apps/api/core";
   import { trapFocus } from "$lib/actions/trapFocus";
   import CopyIconButton from "$lib/components/ui/CopyIconButton.svelte";
+  import { appIcon, appName } from "$lib/branding";
+  import { buildInfo } from "$lib/buildInfo";
   import { t } from "$lib/stores/i18n";
 
   let { onClose }: { onClose: () => void } = $props();
 
   // Awaited in the markup rather than assigned to state from an effect — see a15cdbb,
   // which went through the app removing exactly that shape.
-  const build = Promise.all([getVersion(), invoke<string | null>("app_commit_hash")]).then(
-    ([version, commit]) => ({
-      version,
-      commit,
-      // Parenthesised rather than "0.1.1-abcdef0": that form is a valid semver prerelease
-      // identifier, which would sort the build *below* the release it was cut from.
-      label: commit ? `${version} (${commit})` : version,
-    }),
-  );
+  const build = buildInfo();
 
   let closeBtn: HTMLElement | undefined = $state();
 
@@ -43,20 +35,20 @@
     class="dialog dockl-surface"
     role="dialog"
     aria-modal="true"
-    aria-label={$t("about.title")}
+    aria-label={$t("about.title", { name: appName })}
     tabindex="-1"
     use:trapFocus
     onclick={(e) => e.stopPropagation()}
   >
-    <img class="icon" src="/app-icon.png" alt="" width="48" height="48" />
-    <h2>Dockl</h2>
+    <img class="icon" src={appIcon} alt="" width="48" height="48" />
+    <h2>{appName}</h2>
     <!-- CopyIconButton on its own rather than wrapped in CopyableValue: that wrapper hides
          the button until hover, which is right for a table of them but here left the text
          sitting off-centre by half a button until the pointer arrived. -->
     <div class="version">
       {#await build then b}
         <span>{$t("about.version", { version: b.label })}</span>
-        <CopyIconButton value={b.label} />
+        <CopyIconButton value={b.copyValue} />
       {:catch}
         <!-- Deliberately empty: a failed read shouldn't take the dialog with it. -->
       {/await}

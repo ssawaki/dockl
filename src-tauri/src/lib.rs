@@ -14,6 +14,13 @@ use tauri_plugin_store::StoreExt;
 
 use state::AppState;
 
+/// The app's display name, which the release config overrides. Used wherever the name
+/// reaches the OS — the window title and the tray tooltip — so a dev build is labelled
+/// as one everywhere, not just in the title bar it draws itself.
+pub fn product_name(app: &tauri::AppHandle) -> &str {
+    app.config().product_name.as_deref().unwrap_or("Dockl")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -93,6 +100,12 @@ pub fn run() {
                 .enable_clipboard_access()
                 .build()
                 .expect("failed to build main window");
+
+            // Titled from productName rather than the window config's own `title`, which
+            // the release config can't override: `app.windows` is an array, and Tauri
+            // merges configs by JSON Merge Patch (RFC 7396), which replaces arrays whole.
+            // Overriding it would mean restating the window's geometry in both files.
+            let _ = window.set_title(product_name(app.handle()));
 
             #[cfg(target_os = "windows")]
             {

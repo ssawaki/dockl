@@ -57,7 +57,7 @@ export const ja: Record<MessageKey, string> = {
   "titlebar.maximize": "最大化",
   "titlebar.appMenu": "システムメニュー",
 
-  "about.title": "Dockl について",
+  "about.title": "{name} について",
   "about.version": "バージョン {version}",
 
   "action.start": "開始",

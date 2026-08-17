@@ -12,6 +12,7 @@
   import panelLeftIcon from "@fluentui/svg-icons/icons/panel_left_20_regular.svg?raw";
   import { invoke } from "@tauri-apps/api/core";
   import AboutDialog from "$lib/components/ui/AboutDialog.svelte";
+  import { appIcon, appName } from "$lib/branding";
 
   const appWindow = getCurrentWindow();
 
@@ -68,7 +69,7 @@
       const about = await invoke<boolean>("show_system_menu", {
         x,
         y,
-        aboutLabel: $t("about.title"),
+        aboutLabel: $t("about.title", { name: appName }),
       });
       if (about) aboutOpen = true;
     } catch (e) {
@@ -162,9 +163,9 @@
     aria-label={$t("titlebar.appMenu")}
     aria-haspopup="menu"
   >
-    <img src="/app-icon.png" alt="" width="16" height="16" />
+    <img src={appIcon} alt="" width="16" height="16" />
   </button>
-  <div class="titlebar-title" data-tauri-drag-region>Dockl</div>
+  <div class="titlebar-title" data-tauri-drag-region>{appName}</div>
   {#if $connection.distro}
     <span class="distro-badge dockl-surface" title={$t("titlebar.wslDistro")}
       >{$connection.distro}</span
