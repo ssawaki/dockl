@@ -7,8 +7,8 @@
 # Formatting and linting only. The type checks are deliberately left out: `svelte-check`
 # takes ~17s and can't be narrowed to the files being committed, and a cold `cargo check`
 # runs well over a minute. A hook that costs that much per commit is one people start
-# bypassing with `--no-verify`, which is worse than not having it. Run `npm run check` and
-# `cargo check` by hand, or from CI once there's somewhere to push to.
+# bypassing with `--no-verify`, which is worse than not having it. Run `npm run check:all`
+# by hand, or leave them to CI (.github/workflows/ci.yml).
 pre-commit:
   parallel: true
   commands:

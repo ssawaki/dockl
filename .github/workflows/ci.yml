@@ -1,0 +1,29 @@
+# The type checks lefthook.yml deliberately keeps out of the pre-commit hook, run here
+# instead — plus the frontend build, because `cargo check` needs tauri.conf.json's
+# `frontendDist` (../build) to exist.
+#
+# windows-latest because the app is Windows-only: src-tauri has a `cfg(windows)`
+# dependency on the `windows` crate and won't check on a Linux runner.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run check:all
