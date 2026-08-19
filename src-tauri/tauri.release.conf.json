@@ -3,6 +3,8 @@
   "productName": "Dockl",
   "identifier": "dev.dockl.desktop",
   "bundle": {
+    "publisher": "Dockl",
+    "homepage": "https://github.com/ssawaki/dockl",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

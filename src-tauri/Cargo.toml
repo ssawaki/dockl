@@ -5,7 +5,6 @@ name = "dockl"
 # (Cargo.lock も連動して固定され、バージョン更新の同期対象から外れる)。
 version = "0.0.0"
 description = "Native Windows 11 GUI for Docker running inside WSL2"
-authors = ["you"]
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
