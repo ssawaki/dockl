@@ -1,6 +1,6 @@
 # Installer builds only on a version tag — `npm run installer` takes minutes and produces
 # something nobody wants for a branch push. `npm version <patch|minor|major>` makes the
-# matching tag; `git push --tags` fires this.
+# matching tag; `git push --follow-tags` fires this.
 #
 # The Release is left as a draft: the NSIS installer is unsigned, so publishing is a
 # deliberate act, not a side effect of tagging.
@@ -26,6 +26,14 @@ jobs:
           workspaces: src-tauri
       - run: npm ci
       - run: npm run installer
-      - run: gh release create $env:GITHUB_REF_NAME --draft --title $env:GITHUB_REF_NAME --generate-notes (Get-Item src-tauri/target/release/bundle/nsis/*-setup.exe)
+
+      # Two assets: the NSIS installer, and the bare exe for people who don't want one.
+      # The exe is renamed to match the installer's naming — cargo names it after the
+      # crate (dockl.exe), which says nothing about the version.
+      - run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          Copy-Item src-tauri/target/release/dockl.exe "Dockl_${version}_x64.exe"
+          gh release create $env:GITHUB_REF_NAME --draft --title $env:GITHUB_REF_NAME --generate-notes `
+            (Get-Item src-tauri/target/release/bundle/nsis/*-setup.exe) "Dockl_${version}_x64.exe"
         env:
           GH_TOKEN: ${{ github.token }}
