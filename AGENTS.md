@@ -44,6 +44,23 @@ lefthook runs prettier / eslint / rustfmt over staged files at commit time. Type
 
 **`scripts/build-without-dev-routes.mjs`** moves `src/routes/dev-*` into `node_modules/.cache` for the duration of a build, because SvelteKit code-splits every route whether or not it's reachable. It restores them on the way in as well as on the way out — a killed build can't run its own cleanup.
 
+## Releasing
+
+```bash
+npm version patch          # bumps package.json and tags v0.1.3
+git push --follow-tags     # a plain `git push` leaves the tag behind
+```
+
+The tag is what fires `.github/workflows/release.yml`; nothing else builds an installer.
+It attaches both the NSIS installer and the bare exe (renamed to carry the version) to a
+**draft** Release, so publishing stays a deliberate act — the bundle is unsigned, and a
+draft's assets aren't reachable until someone presses the button.
+
+`.github/workflows/ci.yml` runs the two type checks lefthook leaves out, on every push and
+PR. It builds the frontend first because `cargo check` needs `frontendDist` to exist, and
+`.gitattributes` forces LF because the Windows runners check out CRLF, which
+`prettier --check` rejects.
+
 ## Conventions
 
 - **i18n**: `src/lib/i18n/locales/{en,ja,ja-en}.ts` are flat key→string maps whose key sets must stay identical. Interpolation is `{name}`.
