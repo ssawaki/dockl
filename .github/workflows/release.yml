@@ -1,0 +1,31 @@
+# Installer builds only on a version tag — `npm run release` takes minutes and produces
+# something nobody wants for a branch push. `npm version <patch|minor|major>` makes the
+# matching tag; `git push --tags` fires this.
+#
+# The Release is left as a draft: the NSIS installer is unsigned, so publishing is a
+# deliberate act, not a side effect of tagging.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm run release
+      - run: gh release create $env:GITHUB_REF_NAME --draft --title $env:GITHUB_REF_NAME --generate-notes (Get-Item src-tauri/target/release/bundle/nsis/*-setup.exe)
+        env:
+          GH_TOKEN: ${{ github.token }}
