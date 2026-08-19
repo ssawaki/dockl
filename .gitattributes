@@ -1,0 +1,3 @@
+# The Windows runners check out with core.autocrlf=true, and `prettier --check`
+# fails on CRLF (its endOfLine default is "lf"). Normalise regardless of setting.
+* text=auto eol=lf
