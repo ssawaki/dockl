@@ -61,6 +61,11 @@ fn is_relevant(kind: &str, action: &str) -> bool {
     }
 }
 
+/// Emitted once each time the distro is found stopped, so the frontend can show its
+/// "WSL2 is not running" screen instead of letting every later action fail one by one.
+/// The way back is not an event: the window regaining focus re-checks on its own.
+const DISTRO_STOPPED_EVENT: &str = "wsl:distro-stopped";
+
 /// Keeps a single `docker events --format '{{json .}}'` process running for the app's
 /// whole connected lifetime, forwarding relevant events as the `docker:event` Tauri
 /// event. Always shells out via `wsl.exe`, regardless of `ConnectionMode` — same
@@ -93,6 +98,19 @@ impl DockerEventManager {
         tokio::spawn(async move {
             let mut backoff = Duration::from_secs(1);
             loop {
+                // Checked before every spawn, not just the first: this loop never gives
+                // up, and each `wsl.exe` into a stopped distro boots the whole WSL2 VM —
+                // so without this a `wsl --shutdown` while Dockl is open was undone within
+                // seconds, over and over. `wsl -l -v` is answered by the Windows-side
+                // service, so asking costs nothing and starts nothing.
+                if !crate::wsl::is_distro_running(&distro).await {
+                    let _ = app.emit(DISTRO_STOPPED_EVENT, ());
+                    // Parks until something *else* observes the distro running again,
+                    // rather than asking on a timer: a stopped distro can stay stopped for
+                    // days, and polling it forever is what this whole change is avoiding.
+                    crate::wsl::wait_for_distro_up().await;
+                    continue;
+                }
                 if run_once(&app, &distro).await {
                     // Exited after having connected successfully at least once — the
                     // daemon/distro is presumably fine, so retry promptly rather than

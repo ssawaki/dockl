@@ -15,6 +15,9 @@ export const jaEn: Record<MessageKey, string> = {
   "app.starting": "WSL2を起動中...",
   "app.connectFailed": "WSL2に接続できませんでした",
   "app.retry": "再試行",
+  "app.wslStopped": "WSL2が起動していません",
+  "app.wslStoppedHint": "Docklからは自動起動しません。起動には数十秒かかります。",
+  "app.startWsl": "WSL2を起動して接続",
 
   "common.cancel": "キャンセル",
   "common.close": "閉じる",
@@ -47,6 +50,7 @@ export const jaEn: Record<MessageKey, string> = {
   "table.size": "サイズ",
 
   "titlebar.wslDistro": "接続中のWSLディストロ",
+  "titlebar.wslDistroDisconnected": "未接続のWSLディストロ",
   "titlebar.openShell": "WSLシェルを開く",
   "titlebar.toggleSidebar": "サイドバーの開閉",
   "titlebar.minimize": "最小化",
@@ -98,6 +102,8 @@ export const jaEn: Record<MessageKey, string> = {
   "errors.notConfigured": "Dockerに接続していません。設定画面からセットアップを完了してください。",
   "errors.wslUnavailable": "WSL2に接続できませんでした: {detail}",
   "errors.noDistroFound": "Dockerが入ったWSL2ディストロが見つかりませんでした。",
+  "errors.distroStopped":
+    "WSL2が起動していません。Docklからは自動起動しないので、設定から起動してください。",
 
   "errors.noDistroSelected": "接続先が不明です",
   "errors.connectionSwitchFailed": "接続方式の切り替えに失敗しました: {error}",

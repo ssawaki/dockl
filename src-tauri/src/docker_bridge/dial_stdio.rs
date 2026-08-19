@@ -140,6 +140,10 @@ impl DialStdioConnection {
 
     /// Spawns a fresh relay process and completes an HTTP/1.1 handshake over its stdio.
     async fn dial(&self) -> Result<SendRequest<Full<Bytes>>, AppError> {
+        // Redialing is automatic (any request finding no live relay does it), so without
+        // this a single background refresh would boot a distro the user had stopped.
+        crate::wsl::refuse_if_stopped()?;
+
         let mut child = wsl_command()
             .args([
                 "-d",

@@ -167,8 +167,15 @@
   </button>
   <div class="titlebar-title" data-tauri-drag-region>{appName}</div>
   {#if $connection.distro}
-    <span class="distro-badge dockl-surface" title={$t("titlebar.wslDistro")}
-      >{$connection.distro}</span
+    <!-- Dimmed rather than hidden while not connected: the name is still the distro this
+         app is bound to, but at full strength it read as "connected to this", which is
+         exactly what a stopped WSL2 is not. -->
+    <span
+      class="distro-badge dockl-surface"
+      class:disconnected={$connection.status !== "connected"}
+      title={$connection.status === "connected"
+        ? $t("titlebar.wslDistro")
+        : $t("titlebar.wslDistroDisconnected")}>{$connection.distro}</span
     >
   {/if}
   <button
@@ -253,6 +260,10 @@
     font-size: 11px;
     color: var(--dockl-text-secondary);
     flex-shrink: 0;
+  }
+
+  .distro-badge.disconnected {
+    opacity: 0.45;
   }
 
   .titlebar-controls {

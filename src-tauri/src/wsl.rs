@@ -1,4 +1,6 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
+use tokio::sync::Notify;
 
 use crate::error::AppError;
 
@@ -43,13 +45,76 @@ const CONNECT_TIMEOUT_RUNNING: Duration = Duration::from_secs(10);
 /// generous enough not to abort a boot that would have succeeded.
 const CONNECT_TIMEOUT_STARTING: Duration = Duration::from_secs(60);
 
+/// Set whenever a [`is_distro_running`] check finds the distro stopped, cleared when one
+/// finds it running or when the user explicitly asks to connect. Read by
+/// [`refuse_if_stopped`], which every `wsl.exe`-into-the-distro spawn site consults.
+///
+/// A process-wide flag rather than a field on `AppState`: `ShellOutConnection`,
+/// `DialStdioConnection` and `LogStreamManager` all have to consult it and none of them
+/// holds (or should hold) a Tauri `State` handle. There is one WSL per machine, so there
+/// is nothing per-instance to keep here anyway.
+static DISTRO_STOPPED: AtomicBool = AtomicBool::new(false);
+
+/// Signalled when a check finds the distro running again after it had been seen stopped.
+/// This is what lets the `docker events` loop wait for WSL to come back without polling
+/// for it — the only other way to notice would be to keep spawning `wsl -l -v` on a timer,
+/// which is the very kind of unattended `wsl.exe` this gate exists to get rid of.
+static DISTRO_UP: Notify = Notify::const_new();
+
+/// Ceiling on how long [`wait_for_distro_up`] trusts the signal above. Purely a safety
+/// net for a wake-up that somehow never arrives: at this cadence being stopped costs one
+/// `wsl -l -v` per five minutes, against one every five seconds for the timer it replaced.
+const DISTRO_UP_FALLBACK: Duration = Duration::from_secs(300);
+
+/// Waits until the distro is seen running again. Spawns nothing while waiting.
+///
+/// The wake-up comes from whoever next calls [`is_distro_running`]: the window regaining
+/// focus, or the user pressing "start" — i.e. from a person doing something, rather than
+/// from a timer asking over and over.
+pub async fn wait_for_distro_up() {
+    let _ = tokio::time::timeout(DISTRO_UP_FALLBACK, DISTRO_UP.notified()).await;
+}
+
+/// Fails without spawning anything when the distro is known to be stopped.
+///
+/// Every `wsl.exe` call into a distro boots the whole WSL2 VM, and `wsl.exe` has no flag
+/// to opt out of that (checked against its full `--help`), so refusing up front is the
+/// only way not to. Automatic work — a stats poll, a redial after the relay died, a list
+/// refresh off a docker event — must not boot the VM behind the user's back; only
+/// [`with_connect_timeout`], i.e. a connect the user asked for, lifts this.
+pub(crate) fn refuse_if_stopped() -> Result<(), AppError> {
+    if DISTRO_STOPPED.load(Ordering::Relaxed) {
+        return Err(AppError::DistroStopped);
+    }
+    Ok(())
+}
+
 /// `wsl -l -v` is answered by the WSL service on the Windows side rather than by the
 /// distro, so it stays fast (measured 58–158ms) even while commands *into* the distro
 /// hang. That makes it usable as a pre-flight check when the distro itself may be
 /// unresponsive — which is the whole point of asking before committing to a timeout.
+///
+/// This is the app's only observation of whether the distro is up, so it doubles as the
+/// thing that maintains [`DISTRO_STOPPED`] and wakes [`wait_for_distro_up`] — which is how
+/// the app recovers on its own when the user starts WSL somewhere else entirely and then
+/// comes back to the window.
 pub async fn is_distro_running(distro: &str) -> bool {
     let listed = tokio::time::timeout(Duration::from_secs(5), list_distros()).await;
-    matches!(listed, Ok(Ok(distros)) if distros.iter().any(|d| d.name == distro && d.is_running))
+    let Ok(Ok(distros)) = listed else {
+        // Nothing was learned — `wsl.exe` itself didn't answer. Leaving the flag alone
+        // beats guessing "stopped" from a hiccup and refusing calls that would have
+        // worked; the next check gets another go.
+        return false;
+    };
+    let running = distros.iter().any(|d| d.name == distro && d.is_running);
+    let was_stopped = DISTRO_STOPPED.swap(!running, Ordering::Relaxed);
+    if running && was_stopped {
+        // `notify_one` rather than `notify_waiters`: it leaves a permit behind when the
+        // events loop isn't parked yet, so a wake-up can't fall into the gap between that
+        // loop's own check and its await.
+        DISTRO_UP.notify_one();
+    }
+    running
 }
 
 /// Runs `op`, failing with a recoverable error rather than hanging forever if the distro
@@ -65,10 +130,34 @@ where
     } else {
         CONNECT_TIMEOUT_STARTING
     };
-    match tokio::time::timeout(limit, op).await {
+    // Only the three connect commands wrap themselves in this, and reaching one of them
+    // means the user asked to connect — the one action allowed to boot a stopped distro.
+    // So lift the gate the check above may just have raised, before `op` (which runs
+    // inside `refuse_if_stopped`) is ever polled.
+    DISTRO_STOPPED.store(false, Ordering::Relaxed);
+    let result = match tokio::time::timeout(limit, op).await {
         Ok(result) => result,
         Err(_) => Err(AppError::ConnectTimeout(limit.as_secs())),
+    };
+
+    if result.is_ok() {
+        // The gate was lifted by hand above, so `is_distro_running` never saw the distro
+        // come up and never signalled it. Without this the `docker events` loop would stay
+        // parked in `wait_for_distro_up` — connected, but with no subscription — until its
+        // fallback expired. `notify_one` leaves a permit behind rather than being dropped
+        // when nobody is parked yet; the cost is that a later wait can return spuriously,
+        // which is harmless because its caller re-checks the real state anyway.
+        DISTRO_UP.notify_one();
+    } else {
+        // The gate was lifted for an attempt that then failed, and nothing else would put
+        // it back: a failed `setup_connect` never reaches `event_manager.start`, so the
+        // `docker events` loop — the only other thing that observes the distro — isn't
+        // running to notice. Left as-is, one failed connect would re-arm every automatic
+        // `wsl.exe` spawn in the app for the rest of the session. Costs one `wsl -l -v`,
+        // and only on the failure path.
+        is_distro_running(distro).await;
     }
+    result
 }
 
 /// Runs `docker <args>` inside the given distro and returns captured stdout, decoded
@@ -80,6 +169,8 @@ where
 /// is UTF-16LE. Decoding that unconditionally as UTF-8 corrupted exactly the error text
 /// a user needed to read to understand what went wrong.
 pub async fn run_docker(distro: &str, args: &[&str]) -> Result<String, AppError> {
+    refuse_if_stopped()?;
+
     let mut full_args = vec!["-d", distro, "--", "docker"];
     full_args.extend_from_slice(args);
 
@@ -103,6 +194,8 @@ pub async fn run_docker(distro: &str, args: &[&str]) -> Result<String, AppError>
 /// alone would silently discard exactly the output a user clicking a compose toast to
 /// "see what happened" wants to read.
 pub async fn run_docker_verbose(distro: &str, args: &[&str]) -> Result<String, AppError> {
+    refuse_if_stopped()?;
+
     let mut full_args = vec!["-d", distro, "--", "docker"];
     full_args.extend_from_slice(args);
 

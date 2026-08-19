@@ -13,6 +13,9 @@ export const en = {
   "app.starting": "Starting WSL2...",
   "app.connectFailed": "Could not reach WSL2",
   "app.retry": "Retry",
+  "app.wslStopped": "WSL2 is not running",
+  "app.wslStoppedHint": "Dockl doesn't start it for you. Starting it takes a few tens of seconds.",
+  "app.startWsl": "Start WSL2 and connect",
 
   // Generic, reusable across dialogs/buttons.
   "common.cancel": "Cancel",
@@ -52,6 +55,7 @@ export const en = {
   "table.size": "Size",
 
   "titlebar.wslDistro": "Connected WSL distro",
+  "titlebar.wslDistroDisconnected": "WSL distro (not connected)",
   "titlebar.openShell": "Open WSL shell",
   "titlebar.toggleSidebar": "Toggle sidebar",
   "titlebar.minimize": "Minimize",
@@ -117,6 +121,8 @@ export const en = {
   "errors.notConfigured": "Not connected to Docker yet. Complete setup from Settings.",
   "errors.wslUnavailable": "Could not reach WSL2: {detail}",
   "errors.noDistroFound": "No WSL2 distro with Docker was found.",
+  "errors.distroStopped":
+    "WSL2 is not running. Dockl won't start it on its own — start it from Settings.",
 
   "errors.noDistroSelected": "No connection target selected",
   "errors.connectionSwitchFailed": "Failed to switch connection method: {error}",

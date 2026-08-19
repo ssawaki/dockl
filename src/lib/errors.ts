@@ -24,6 +24,7 @@ const TRANSLATED: Record<string, MessageKey> = {
   not_configured: "errors.notConfigured",
   wsl_unavailable: "errors.wslUnavailable",
   no_distro_found: "errors.noDistroFound",
+  distro_stopped: "errors.distroStopped",
 };
 
 function isTauriError(e: unknown): e is TauriError {

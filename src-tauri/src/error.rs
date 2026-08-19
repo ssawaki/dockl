@@ -28,6 +28,12 @@ pub enum AppError {
     #[error("WSL2 did not respond within {0}s")]
     ConnectTimeout(u64),
 
+    /// Refused before spawning anything, because the distro is stopped and running the
+    /// command would have booted the WSL2 VM — see `wsl::refuse_if_stopped`. Distinct from
+    /// `WslUnavailable`: nothing failed, we declined to start something.
+    #[error("the WSL2 distro is not running")]
+    DistroStopped,
+
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -46,6 +52,7 @@ impl AppError {
             Self::ParseError(_) => "parse_error",
             Self::NotConfigured => "not_configured",
             Self::ConnectTimeout(_) => "connect_timeout",
+            Self::DistroStopped => "distro_stopped",
             Self::Io(_) => "io",
         }
     }
@@ -62,7 +69,7 @@ impl AppError {
             | Self::ParseError(detail) => HashMap::from([("detail", detail.clone())]),
             Self::Io(e) => HashMap::from([("detail", e.to_string())]),
             Self::ConnectTimeout(seconds) => HashMap::from([("seconds", seconds.to_string())]),
-            Self::NoDistroFound | Self::NotConfigured => HashMap::new(),
+            Self::NoDistroFound | Self::NotConfigured | Self::DistroStopped => HashMap::new(),
         }
     }
 }

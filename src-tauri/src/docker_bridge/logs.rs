@@ -33,6 +33,8 @@ impl LogStreamManager {
         distro: String,
         docker_args: Vec<String>,
     ) -> Result<String, AppError> {
+        crate::wsl::refuse_if_stopped()?;
+
         let stream_id = Uuid::new_v4().to_string();
 
         let mut cmd = tokio::process::Command::new("wsl.exe");
