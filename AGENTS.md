@@ -8,7 +8,7 @@ A Windows 11 desktop GUI for a Docker daemon running inside WSL2. Tauri v2 (Rust
 
 ```bash
 npm run app          # run the dev build (same as npm run tauri dev)
-npm run release      # build the production installer
+npm run installer    # build the production installer
 npm run check:all    # svelte-check and cargo check, in parallel
 npm run lint         # prettier --check and eslint
 npm run format       # prettier --write
@@ -18,7 +18,7 @@ There are no tests.
 
 `npm run dev` and `npm run build` are the **frontend only** — Tauri invokes them as its `beforeDevCommand` / `beforeBuildCommand`. Neither runs or builds the app.
 
-**`npm run release` is not optional.** `tauri.conf.json` is the dev config (productName `Dockl Dev`, identifier `dev.dockl.desktop.dev`, `icons-dev/`), and `tauri.release.conf.json` overrides those three keys for production. A bare `tauri build` produces a Dev-branded installer — visible in the filename, but wrong.
+**`npm run installer` is not optional.** `tauri.conf.json` is the dev config (productName `Dockl Dev`, identifier `dev.dockl.desktop.dev`, `icons-dev/`), and `tauri.release.conf.json` overrides those three keys for production. A bare `tauri build` produces a Dev-branded installer — visible in the filename, but wrong.
 
 lefthook runs prettier / eslint / rustfmt over staged files at commit time. Type checks are deliberately excluded for being slow, so run `check:all` by hand.
 

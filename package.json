@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "app": "tauri dev",
-    "release": "tauri build --config src-tauri/tauri.release.conf.json",
+    "installer": "tauri build --config src-tauri/tauri.release.conf.json",
     "build": "node scripts/build-without-dev-routes.mjs",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

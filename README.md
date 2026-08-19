@@ -42,7 +42,7 @@ Docker のインストール形態は問いません。rootless インストー�
 
 ```bash
 npm install
-npm run tauri build
+npm run installer
 ```
 
 インストーラは `src-tauri/target/release/bundle/nsis/` に生成されます。管理者権限は不要で、常に現在のユーザーにのみインストールされます。
