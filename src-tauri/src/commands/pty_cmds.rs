@@ -21,8 +21,8 @@ use crate::state::AppState;
 ///   fails the `-x` test like any other miss.
 const DEFAULT_SHELL_PROBE: &str = r#"for s in "$(getent passwd "$(id -u)" 2>/dev/null | cut -d: -f7)" /bin/bash /bin/sh; do case "$s" in ""|*nologin|*false) continue;; esac; [ -x "$s" ] && exec "$s"; done; exec sh"#;
 
-/// Attaches an interactive shell inside a running container, via
-/// `wsl.exe -d <distro> --exec docker exec -it <id> <shell>`.
+/// Attaches an interactive shell inside a running container through a direct `--exec`
+/// invocation of the Docker CLI resolved for the distro.
 ///
 /// `--exec` rather than plain `--`: without it `wsl.exe` reconstructs the argv into
 /// a single command line and hands it to the distro's *default* shell to parse, which
@@ -30,13 +30,8 @@ const DEFAULT_SHELL_PROBE: &str = r#"for s in "$(getent passwd "$(id -u)" 2>/dev
 /// assumed: through plain `--` the probe returns the fallback instead of the real login
 /// shell, because the outer zsh eats the `$(...)` first.
 ///
-/// The tradeoff is that `--exec` skips the login shell, so `docker` must be on WSL's
-/// default PATH (`/usr/bin/docker` for the apt-installed engine this app targets — see
-/// PLAN.md). Anything reachable *only* via a PATH entry added by the user's shell rc —
-/// notably Docker Desktop's `/mnt/c/Program Files/Docker/...` CLI — would not be found
-/// here even though `wsl::run_docker`'s plain `--` finds it. That's why this asymmetry is
-/// confined to this one call: `run_docker` passes only metacharacter-free arguments, so
-/// it has nothing to gain from `--exec` and keeps the broader PATH.
+/// The CLI path is resolved once through the login shell before this point, preserving
+/// PATH entries from shell startup without exposing any Docker argument to that shell.
 #[tauri::command]
 pub async fn start_attach_session(
     app: AppHandle,
@@ -52,12 +47,13 @@ pub async fn start_attach_session(
         .await
         .clone()
         .ok_or(AppError::NotConfigured)?;
+    let docker_path = crate::wsl::docker_path(&distro).await?;
 
     let mut args = vec![
         "-d".to_string(),
         distro,
         "--exec".to_string(),
-        "docker".to_string(),
+        docker_path,
         "exec".to_string(),
         "-it".to_string(),
         container_id,

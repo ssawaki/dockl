@@ -12,8 +12,7 @@ pub async fn get_container_stats(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<String, AppError> {
-    let guard = state.connection.read().await;
-    let connection = guard.as_ref().ok_or(AppError::NotConfigured)?;
+    let connection = state.connection().await?;
     connection.container_stats(&id).await
 }
 
@@ -22,8 +21,7 @@ pub async fn get_container_stats(
 /// is `None`) — an unlimited container can use every core the daemon has.
 #[tauri::command]
 pub async fn get_host_cpu_count(state: State<'_, AppState>) -> Result<u32, AppError> {
-    let guard = state.connection.read().await;
-    let connection = guard.as_ref().ok_or(AppError::NotConfigured)?;
+    let connection = state.connection().await?;
     connection.host_cpu_count().await
 }
 
@@ -35,7 +33,6 @@ pub async fn get_container_disk_usage(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<String, AppError> {
-    let guard = state.connection.read().await;
-    let connection = guard.as_ref().ok_or(AppError::NotConfigured)?;
+    let connection = state.connection().await?;
     connection.container_disk_usage(&id).await
 }

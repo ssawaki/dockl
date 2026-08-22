@@ -10,9 +10,6 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 
-#[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
 /// Tracks in-flight `docker logs -f` child processes (regardless of `ConnectionMode`,
 /// this always shells out via `wsl.exe`, same rationale as `compose::compose_action`)
 /// so a stream can be cancelled later and so we notice when the underlying container
@@ -33,20 +30,10 @@ impl LogStreamManager {
         distro: String,
         docker_args: Vec<String>,
     ) -> Result<String, AppError> {
-        crate::wsl::refuse_if_stopped()?;
-
         let stream_id = Uuid::new_v4().to_string();
 
-        let mut cmd = tokio::process::Command::new("wsl.exe");
-        #[cfg(windows)]
-        {
-            cmd.creation_flags(CREATE_NO_WINDOW);
-        }
-        cmd.arg("-d")
-            .arg(&distro)
-            .arg("--")
-            .arg("docker")
-            .args(&docker_args);
+        let mut cmd = crate::wsl::docker_command(&distro).await?;
+        cmd.args(&docker_args);
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
         cmd.kill_on_drop(true);

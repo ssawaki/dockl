@@ -20,6 +20,12 @@ pub enum AppError {
     #[error("docker connection is not configured")]
     NotConfigured,
 
+    #[error("Docker is not listening; run setup first")]
+    DockerNotListening,
+
+    #[error("the Docker CLI executable could not be found in the distro")]
+    DockerExecutableNotFound,
+
     /// The distro accepted the call but never answered within the ceiling
     /// `wsl::with_connect_timeout` (or `EngineApiConnection::request`) allowed. Distinct
     /// from `WslUnavailable` (which means `wsl.exe` itself failed) because this is the
@@ -51,6 +57,8 @@ impl AppError {
             Self::CommandFailed(_) => "command_failed",
             Self::ParseError(_) => "parse_error",
             Self::NotConfigured => "not_configured",
+            Self::DockerNotListening => "docker_not_listening",
+            Self::DockerExecutableNotFound => "docker_executable_not_found",
             Self::ConnectTimeout(_) => "connect_timeout",
             Self::DistroStopped => "distro_stopped",
             Self::Io(_) => "io",
@@ -69,7 +77,11 @@ impl AppError {
             | Self::ParseError(detail) => HashMap::from([("detail", detail.clone())]),
             Self::Io(e) => HashMap::from([("detail", e.to_string())]),
             Self::ConnectTimeout(seconds) => HashMap::from([("seconds", seconds.to_string())]),
-            Self::NoDistroFound | Self::NotConfigured | Self::DistroStopped => HashMap::new(),
+            Self::NoDistroFound
+            | Self::NotConfigured
+            | Self::DockerNotListening
+            | Self::DockerExecutableNotFound
+            | Self::DistroStopped => HashMap::new(),
         }
     }
 }

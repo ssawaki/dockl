@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use tokio::sync::Notify;
+use tokio::sync::{Notify, RwLock};
 
 use crate::error::AppError;
 
@@ -61,6 +63,8 @@ static DISTRO_STOPPED: AtomicBool = AtomicBool::new(false);
 /// which is the very kind of unattended `wsl.exe` this gate exists to get rid of.
 static DISTRO_UP: Notify = Notify::const_new();
 
+static DOCKER_PATHS: OnceLock<RwLock<HashMap<String, String>>> = OnceLock::new();
+
 /// Ceiling on how long [`wait_for_distro_up`] trusts the signal above. Purely a safety
 /// net for a wake-up that somehow never arrives: at this cadence being stopped costs one
 /// `wsl -l -v` per five minutes, against one every five seconds for the timer it replaced.
@@ -87,6 +91,46 @@ pub(crate) fn refuse_if_stopped() -> Result<(), AppError> {
         return Err(AppError::DistroStopped);
     }
     Ok(())
+}
+
+/// Resolves the Docker CLI through the distro's login shell once, then returns the
+/// absolute path for direct `--exec` calls. Only the fixed lookup command is interpreted
+/// by a shell; Docker arguments never cross that boundary.
+pub(crate) async fn docker_path(distro: &str) -> Result<String, AppError> {
+    refuse_if_stopped()?;
+
+    let paths = DOCKER_PATHS.get_or_init(|| RwLock::new(HashMap::new()));
+    if let Some(path) = paths.read().await.get(distro).cloned() {
+        return Ok(path);
+    }
+
+    let output = wsl_command()
+        .args(["-d", distro, "--", "command", "-v", "docker"])
+        .output()
+        .await
+        .map_err(|e| AppError::WslUnavailable(e.to_string()))?;
+    let stdout = decode_process_output(&output.stdout);
+    let path = stdout.trim();
+    if !output.status.success()
+        || !path.starts_with('/')
+        || path.lines().count() != 1
+        || path.contains('\0')
+    {
+        return Err(AppError::DockerExecutableNotFound);
+    }
+
+    let path = path.to_string();
+    paths.write().await.insert(distro.to_string(), path.clone());
+    Ok(path)
+}
+
+/// Builds a direct Docker CLI invocation. The executable and every argument are passed
+/// as argv through `--exec`, so shell metacharacters remain ordinary data.
+pub(crate) async fn docker_command(distro: &str) -> Result<tokio::process::Command, AppError> {
+    let path = docker_path(distro).await?;
+    let mut cmd = wsl_command();
+    cmd.args(["-d", distro, "--exec", &path]);
+    Ok(cmd)
 }
 
 /// `wsl -l -v` is answered by the WSL service on the Windows side rather than by the
@@ -169,13 +213,9 @@ where
 /// is UTF-16LE. Decoding that unconditionally as UTF-8 corrupted exactly the error text
 /// a user needed to read to understand what went wrong.
 pub async fn run_docker(distro: &str, args: &[&str]) -> Result<String, AppError> {
-    refuse_if_stopped()?;
-
-    let mut full_args = vec!["-d", distro, "--", "docker"];
-    full_args.extend_from_slice(args);
-
-    let output = wsl_command()
-        .args(&full_args)
+    let output = docker_command(distro)
+        .await?
+        .args(args)
         .output()
         .await
         .map_err(|e| AppError::WslUnavailable(e.to_string()))?;
@@ -194,13 +234,9 @@ pub async fn run_docker(distro: &str, args: &[&str]) -> Result<String, AppError>
 /// alone would silently discard exactly the output a user clicking a compose toast to
 /// "see what happened" wants to read.
 pub async fn run_docker_verbose(distro: &str, args: &[&str]) -> Result<String, AppError> {
-    refuse_if_stopped()?;
-
-    let mut full_args = vec!["-d", distro, "--", "docker"];
-    full_args.extend_from_slice(args);
-
-    let output = wsl_command()
-        .args(&full_args)
+    let output = docker_command(distro)
+        .await?
+        .args(args)
         .output()
         .await
         .map_err(|e| AppError::WslUnavailable(e.to_string()))?;

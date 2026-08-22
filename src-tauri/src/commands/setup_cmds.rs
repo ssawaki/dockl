@@ -19,9 +19,9 @@ pub async fn setup_list_distros() -> Result<Vec<DistroInfo>, AppError> {
 /// distro without a reachable Docker daemon surfaces as an error immediately rather
 /// than failing later on the first container-list refresh.
 ///
-/// Also (re)starts the `docker events` subscription (`DockerEventManager`) — it's a
-/// no-op past the first successful connect (see its own doc comment for why it's tied
-/// to *this* command rather than something the frontend triggers separately).
+/// Also (re)starts the `docker events` subscription (`DockerEventManager`) for this
+/// distro (see its own doc comment for why it's tied to *this* command rather than
+/// something the frontend triggers separately).
 #[tauri::command]
 pub async fn setup_connect(
     app: AppHandle,
@@ -136,9 +136,7 @@ pub async fn check_tcp_bridge(port: u16) -> Result<(), AppError> {
 fn describe_ping_error(err: bollard::errors::Error) -> AppError {
     if let bollard::errors::Error::HyperLegacyError { err: ref hyper_err } = err {
         if hyper_err.is_connect() {
-            return AppError::CommandFailed(
-                "Dockerが待ち受けていません。セットアップを実行してください。".to_string(),
-            );
+            return AppError::DockerNotListening;
         }
     }
     AppError::CommandFailed(err.to_string())

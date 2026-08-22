@@ -119,6 +119,9 @@ export const en = {
   "errors.connectTimeout":
     "WSL2 stopped responding (no reply within {seconds}s). It may recover on its own — try again in a moment.",
   "errors.notConfigured": "Not connected to Docker yet. Complete setup from Settings.",
+  "errors.dockerNotListening": "Docker is not listening. Run setup first.",
+  "errors.dockerExecutableNotFound":
+    "Could not find the Docker CLI in this WSL2 distro. Check that Docker is installed and available from your login shell.",
   "errors.wslUnavailable": "Could not reach WSL2: {detail}",
   "errors.noDistroFound": "No WSL2 distro with Docker was found.",
   "errors.distroStopped":

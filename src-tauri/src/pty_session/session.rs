@@ -38,7 +38,7 @@ impl PtySessionManager {
     }
 
     /// `args` are the full argv to run under `wsl.exe` (e.g.
-    /// `["-d", "Ubuntu", "--", "docker", "exec", "-it", "<id>", "sh"]`).
+    /// `["-d", "Ubuntu", "--exec", "/usr/bin/docker", "exec", "-it", "<id>", "sh"]`).
     pub fn start(
         &self,
         app: AppHandle,
@@ -180,8 +180,13 @@ impl PtySessionManager {
     }
 
     pub fn write(&self, session_id: &str, data: &str) -> Result<(), AppError> {
-        let sessions = self.sessions.lock().unwrap();
-        let session = sessions.get(session_id).ok_or(AppError::NotConfigured)?;
+        let session = self
+            .sessions
+            .lock()
+            .unwrap()
+            .get(session_id)
+            .cloned()
+            .ok_or(AppError::NotConfigured)?;
         let result = session
             .writer
             .lock()
@@ -192,8 +197,13 @@ impl PtySessionManager {
     }
 
     pub fn resize(&self, session_id: &str, cols: u16, rows: u16) -> Result<(), AppError> {
-        let sessions = self.sessions.lock().unwrap();
-        let session = sessions.get(session_id).ok_or(AppError::NotConfigured)?;
+        let session = self
+            .sessions
+            .lock()
+            .unwrap()
+            .get(session_id)
+            .cloned()
+            .ok_or(AppError::NotConfigured)?;
         let result = session
             .master
             .lock()

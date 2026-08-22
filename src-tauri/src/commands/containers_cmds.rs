@@ -9,8 +9,7 @@ pub async fn list_containers(
     state: State<'_, AppState>,
     all: bool,
 ) -> Result<Vec<ContainerSummary>, AppError> {
-    let guard = state.connection.read().await;
-    let connection = guard.as_ref().ok_or(AppError::NotConfigured)?;
+    let connection = state.connection().await?;
     connection.list_containers(all).await
 }
 
@@ -20,8 +19,7 @@ pub async fn container_action(
     id: String,
     action: ContainerActionKind,
 ) -> Result<(), AppError> {
-    let guard = state.connection.read().await;
-    let connection = guard.as_ref().ok_or(AppError::NotConfigured)?;
+    let connection = state.connection().await?;
     connection.container_action(&id, action).await
 }
 
@@ -30,7 +28,6 @@ pub async fn inspect_container(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<ContainerDetail, AppError> {
-    let guard = state.connection.read().await;
-    let connection = guard.as_ref().ok_or(AppError::NotConfigured)?;
+    let connection = state.connection().await?;
     connection.inspect_container(&id).await
 }

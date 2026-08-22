@@ -13,6 +13,7 @@ use tokio::process::{ChildStdin, ChildStdout};
 use tokio::sync::Mutex;
 
 use crate::error::AppError;
+#[cfg(test)]
 use crate::wsl::wsl_command;
 
 /// How much of the stream's opening bytes to keep for diagnostics. Enough to hold a
@@ -144,15 +145,9 @@ impl DialStdioConnection {
         // this a single background refresh would boot a distro the user had stopped.
         crate::wsl::refuse_if_stopped()?;
 
-        let mut child = wsl_command()
-            .args([
-                "-d",
-                &self.distro,
-                "--exec",
-                "docker",
-                "system",
-                "dial-stdio",
-            ])
+        let mut child = crate::wsl::docker_command(&self.distro)
+            .await?
+            .args(["system", "dial-stdio"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

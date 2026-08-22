@@ -22,6 +22,8 @@ interface TauriError {
 const TRANSLATED: Record<string, MessageKey> = {
   connect_timeout: "errors.connectTimeout",
   not_configured: "errors.notConfigured",
+  docker_not_listening: "errors.dockerNotListening",
+  docker_executable_not_found: "errors.dockerExecutableNotFound",
   wsl_unavailable: "errors.wslUnavailable",
   no_distro_found: "errors.noDistroFound",
   distro_stopped: "errors.distroStopped",

@@ -100,6 +100,9 @@ export const jaEn: Record<MessageKey, string> = {
   "errors.connectTimeout":
     "WSL2が応答しなくなりました（{seconds}秒以内に応答がありません）。時間を置くと復帰することがあります。少し待ってから再試行してください。",
   "errors.notConfigured": "Dockerに接続していません。設定画面からセットアップを完了してください。",
+  "errors.dockerNotListening": "Dockerが待ち受けていません。セットアップを実行してください。",
+  "errors.dockerExecutableNotFound":
+    "このWSL2ディストロでDocker CLIが見つかりませんでした。Dockerがインストールされ、ログインシェルから実行できることを確認してください。",
   "errors.wslUnavailable": "WSL2に接続できませんでした: {detail}",
   "errors.noDistroFound": "Dockerが入ったWSL2ディストロが見つかりませんでした。",
   "errors.distroStopped":

@@ -5,9 +5,6 @@ use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::Mutex;
 
-#[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
 /// The event this app actually cares about, normalized from `docker events`'s raw JSON
 /// (`{"Type":"container","Action":"start","Actor":{"ID":"...",...},...}`) down to just
 /// enough for a listener to decide "does my current view need a refresh?" — nothing
@@ -74,28 +71,32 @@ const DISTRO_STOPPED_EVENT: &str = "wsl:distro-stopped";
 /// "avoid a `wsl.exe` spawn per call" motivation behind `EngineApiConnection` doesn't
 /// apply — a single idle subprocess for the app's lifetime is negligible by comparison.
 pub struct DockerEventManager {
-    started: Mutex<bool>,
+    subscription: Mutex<Option<(String, tokio::task::AbortHandle)>>,
 }
 
 impl DockerEventManager {
     pub fn new() -> Self {
         Self {
-            started: Mutex::new(false),
+            subscription: Mutex::new(None),
         }
     }
 
-    /// Starts the background subscription if it isn't already running. Safe to call
-    /// more than once — only the first call (per process lifetime) does anything, so
-    /// callers don't need to track whether they've already started it.
+    /// Starts the background subscription for `distro`. Repeated calls for the same
+    /// distro are no-ops; changing distro replaces the old subscription.
     pub async fn start(&self, app: AppHandle, distro: String) {
-        let mut started = self.started.lock().await;
-        if *started {
+        let mut subscription = self.subscription.lock().await;
+        if subscription
+            .as_ref()
+            .is_some_and(|(active_distro, _)| active_distro == &distro)
+        {
             return;
         }
-        *started = true;
-        drop(started);
+        if let Some((_, handle)) = subscription.take() {
+            handle.abort();
+        }
 
-        tokio::spawn(async move {
+        let task_distro = distro.clone();
+        let task = tokio::spawn(async move {
             let mut backoff = Duration::from_secs(1);
             loop {
                 // Checked before every spawn, not just the first: this loop never gives
@@ -103,7 +104,7 @@ impl DockerEventManager {
                 // so without this a `wsl --shutdown` while Dockl is open was undone within
                 // seconds, over and over. `wsl -l -v` is answered by the Windows-side
                 // service, so asking costs nothing and starts nothing.
-                if !crate::wsl::is_distro_running(&distro).await {
+                if !crate::wsl::is_distro_running(&task_distro).await {
                     let _ = app.emit(DISTRO_STOPPED_EVENT, ());
                     // Parks until something *else* observes the distro running again,
                     // rather than asking on a timer: a stopped distro can stay stopped for
@@ -111,7 +112,7 @@ impl DockerEventManager {
                     crate::wsl::wait_for_distro_up().await;
                     continue;
                 }
-                if run_once(&app, &distro).await {
+                if run_once(&app, &task_distro).await {
                     // Exited after having connected successfully at least once — the
                     // daemon/distro is presumably fine, so retry promptly rather than
                     // applying the backoff meant for a distro/daemon that isn't up yet.
@@ -122,6 +123,7 @@ impl DockerEventManager {
                 tokio::time::sleep(backoff).await;
             }
         });
+        *subscription = Some((distro, task.abort_handle()));
     }
 }
 
@@ -136,18 +138,11 @@ impl Default for DockerEventManager {
 /// whether it ever received at least one line, so the retry loop can distinguish "was
 /// briefly connected, then dropped" (retry fast) from "never connected at all" (back off).
 async fn run_once(app: &AppHandle, distro: &str) -> bool {
-    let mut cmd = tokio::process::Command::new("wsl.exe");
-    #[cfg(windows)]
-    {
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
-    cmd.arg("-d")
-        .arg(distro)
-        .arg("--")
-        .arg("docker")
-        .arg("events")
-        .arg("--format")
-        .arg("{{json .}}");
+    let mut cmd = match crate::wsl::docker_command(distro).await {
+        Ok(cmd) => cmd,
+        Err(_) => return false,
+    };
+    cmd.arg("events").arg("--format").arg("{{json .}}");
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::null());
     cmd.kill_on_drop(true);

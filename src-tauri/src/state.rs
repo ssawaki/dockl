@@ -2,6 +2,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::docker_bridge::{DockerConnection, DockerEventManager, LogStreamManager};
+use crate::error::AppError;
 use crate::pty_session::PtySessionManager;
 
 /// Shared application state, managed by Tauri and injected into commands via `State<...>`.
@@ -22,6 +23,14 @@ impl AppState {
             pty_sessions: PtySessionManager::new(),
             event_manager: DockerEventManager::new(),
         }
+    }
+
+    pub async fn connection(&self) -> Result<Arc<dyn DockerConnection>, AppError> {
+        self.connection
+            .read()
+            .await
+            .clone()
+            .ok_or(AppError::NotConfigured)
     }
 }
 
