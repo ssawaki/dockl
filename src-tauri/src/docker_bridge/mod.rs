@@ -15,7 +15,7 @@ pub use engine_api::EngineApiConnection;
 #[allow(unused_imports)]
 pub use connection::ConnectionMode;
 pub use events::DockerEventManager;
-pub use logs::LogStreamManager;
+pub use logs::{LogStreamEvent, LogStreamManager};
 pub use types::{
     ContainerActionKind, ContainerDetail, ContainerSummary, DiskUsageEntry, ImageSummary,
     NetworkSummary, VolumeSummary,

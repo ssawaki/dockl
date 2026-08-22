@@ -15,12 +15,7 @@ pub async fn compose_action(
     config_files: Vec<String>,
     action: String,
 ) -> Result<String, AppError> {
-    let distro = state
-        .current_distro
-        .read()
-        .await
-        .clone()
-        .ok_or(AppError::NotConfigured)?;
+    let distro = state.distro().await?;
 
     compose::compose_action(&distro, &project, &config_files, &action).await
 }

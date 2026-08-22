@@ -3,7 +3,8 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 
 use portable_pty::{Child, ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_system};
-use tauri::{AppHandle, Emitter};
+use serde::Serialize;
+use tauri::ipc::Channel;
 use uuid::Uuid;
 
 use crate::error::AppError;
@@ -21,6 +22,13 @@ struct PtySession {
     // for. Holding the `Child` here instead would mean `close()` blocks on a mutex the
     // watcher only releases when the process it's waiting for is already gone.
     killer: Mutex<Box<dyn ChildKiller + Send + Sync>>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase", tag = "event", content = "data")]
+pub enum PtyEvent {
+    Data(String),
+    Exit,
 }
 
 /// Manages interactive PTY sessions (`docker exec -it`, or a plain WSL shell) spawned
@@ -41,10 +49,10 @@ impl PtySessionManager {
     /// `["-d", "Ubuntu", "--exec", "/usr/bin/docker", "exec", "-it", "<id>", "sh"]`).
     pub fn start(
         &self,
-        app: AppHandle,
         args: Vec<String>,
         cols: u16,
         rows: u16,
+        on_event: Channel<PtyEvent>,
     ) -> Result<String, AppError> {
         let pty_system = native_pty_system();
         let pair = pty_system
@@ -88,7 +96,7 @@ impl PtySessionManager {
             .unwrap()
             .insert(session_id.clone(), session);
 
-        self.spawn_reader(app, session_id.clone(), reader);
+        self.spawn_reader(on_event, session_id.clone(), reader);
         self.spawn_child_watcher(session_id.clone(), child);
 
         Ok(session_id)
@@ -123,10 +131,14 @@ impl PtySessionManager {
         });
     }
 
-    fn spawn_reader(&self, app: AppHandle, session_id: String, mut reader: Box<dyn Read + Send>) {
+    fn spawn_reader(
+        &self,
+        on_event: Channel<PtyEvent>,
+        session_id: String,
+        mut reader: Box<dyn Read + Send>,
+    ) {
         let sessions = self.sessions.clone();
         tokio::task::spawn_blocking(move || {
-            let data_event = format!("pty:{session_id}:data");
             let mut buf = [0u8; 8192];
             // Carries a UTF-8 sequence that a fixed-size read split across two calls,
             // so it can be completed (or, worst case, lossily flushed) on the next one
@@ -144,7 +156,7 @@ impl PtySessionManager {
                         // every ~8KB chunk of a session that can live for a long time.
                         match std::str::from_utf8(&leftover) {
                             Ok(s) => {
-                                let _ = app.emit(&data_event, s);
+                                let _ = on_event.send(PtyEvent::Data(s.to_string()));
                                 leftover.clear();
                             }
                             Err(e) => {
@@ -152,7 +164,7 @@ impl PtySessionManager {
                                 if valid_up_to > 0 {
                                     let s = std::str::from_utf8(&leftover[..valid_up_to])
                                         .expect("valid_up_to guarantees a valid prefix");
-                                    let _ = app.emit(&data_event, s);
+                                    let _ = on_event.send(PtyEvent::Data(s.to_string()));
                                 }
                                 let remainder = leftover.split_off(valid_up_to);
                                 leftover = remainder;
@@ -161,8 +173,9 @@ impl PtySessionManager {
                                 // character but genuinely invalid data — flush it
                                 // lossily rather than buffering forever.
                                 if leftover.len() >= 4 {
-                                    let _ =
-                                        app.emit(&data_event, String::from_utf8_lossy(&leftover));
+                                    let _ = on_event.send(PtyEvent::Data(
+                                        String::from_utf8_lossy(&leftover).into_owned(),
+                                    ));
                                     leftover.clear();
                                 }
                             }
@@ -172,10 +185,12 @@ impl PtySessionManager {
                 }
             }
             if !leftover.is_empty() {
-                let _ = app.emit(&data_event, String::from_utf8_lossy(&leftover));
+                let _ = on_event.send(PtyEvent::Data(
+                    String::from_utf8_lossy(&leftover).into_owned(),
+                ));
             }
             sessions.lock().unwrap().remove(&session_id);
-            let _ = app.emit(&format!("pty:{session_id}:exit"), ());
+            let _ = on_event.send(PtyEvent::Exit);
         });
     }
 
@@ -187,13 +202,12 @@ impl PtySessionManager {
             .get(session_id)
             .cloned()
             .ok_or(AppError::NotConfigured)?;
-        let result = session
+        session
             .writer
             .lock()
             .unwrap()
             .write_all(data.as_bytes())
-            .map_err(|e| AppError::CommandFailed(e.to_string()));
-        result
+            .map_err(|e| AppError::CommandFailed(e.to_string()))
     }
 
     pub fn resize(&self, session_id: &str, cols: u16, rows: u16) -> Result<(), AppError> {
@@ -204,7 +218,7 @@ impl PtySessionManager {
             .get(session_id)
             .cloned()
             .ok_or(AppError::NotConfigured)?;
-        let result = session
+        session
             .master
             .lock()
             .unwrap()
@@ -214,8 +228,7 @@ impl PtySessionManager {
                 pixel_width: 0,
                 pixel_height: 0,
             })
-            .map_err(|e| AppError::CommandFailed(e.to_string()));
-        result
+            .map_err(|e| AppError::CommandFailed(e.to_string()))
     }
 
     pub fn close(&self, session_id: &str) -> Result<(), AppError> {

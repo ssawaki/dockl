@@ -138,7 +138,7 @@ pub fn run() {
 
             window.show().expect("failed to show main window");
 
-            tray::build_tray(&app.handle())?;
+            tray::build_tray(app.handle())?;
 
             let app_handle = app.handle().clone();
             window.on_window_event(move |event| {

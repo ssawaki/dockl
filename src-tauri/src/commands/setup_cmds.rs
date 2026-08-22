@@ -33,15 +33,14 @@ pub async fn setup_connect(
     // app on its "connecting" screen forever with nothing to act on.
     wsl::with_connect_timeout(&distro, connection.list_containers(true)).await?;
 
-    *state.connection.write().await = Some(Arc::new(connection));
-    *state.current_distro.write().await = Some(distro.clone());
+    state.set_target(Arc::new(connection), distro.clone()).await;
     state.event_manager.start(app, distro).await;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn setup_current_distro(state: State<'_, AppState>) -> Result<Option<String>, AppError> {
-    Ok(state.current_distro.read().await.clone())
+    Ok(state.current_distro().await)
 }
 
 /// Switches the app's live `DockerConnection` (container/image/volume/network
@@ -59,16 +58,10 @@ pub async fn setup_current_distro(state: State<'_, AppState>) -> Result<Option<S
 #[tauri::command]
 pub async fn connect_tcp_bridge(state: State<'_, AppState>, port: u16) -> Result<(), AppError> {
     let connection = EngineApiConnection::tcp(port)?;
-    let distro = state
-        .current_distro
-        .read()
-        .await
-        .clone()
-        .unwrap_or_default();
+    let distro = state.distro().await?;
     wsl::with_connect_timeout(&distro, connection.list_containers(true)).await?;
 
-    *state.connection.write().await = Some(Arc::new(connection));
-    Ok(())
+    state.replace_connection(Arc::new(connection)).await
 }
 
 /// Switches the app's live `DockerConnection` over to the "dial_stdio" mode: the same
@@ -83,12 +76,7 @@ pub async fn connect_tcp_bridge(state: State<'_, AppState>, port: u16) -> Result
 /// shelling out regardless of this setting).
 #[tauri::command]
 pub async fn connect_dial_stdio(state: State<'_, AppState>) -> Result<(), AppError> {
-    let distro = state
-        .current_distro
-        .read()
-        .await
-        .clone()
-        .ok_or(AppError::NotConfigured)?;
+    let distro = state.distro().await?;
 
     let connection = EngineApiConnection::dial_stdio(distro.clone());
     // Especially important here: the relay is a long-lived child process, so an
@@ -96,8 +84,7 @@ pub async fn connect_dial_stdio(state: State<'_, AppState>) -> Result<(), AppErr
     // as a spawn failure.
     wsl::with_connect_timeout(&distro, connection.list_containers(true)).await?;
 
-    *state.connection.write().await = Some(Arc::new(connection));
-    Ok(())
+    state.replace_connection(Arc::new(connection)).await
 }
 
 /// Whether `wsl -l -v` currently reports the given distro as running, so the frontend can
@@ -134,10 +121,10 @@ pub async fn check_tcp_bridge(port: u16) -> Result<(), AppError> {
 /// it gets a plain-language explanation instead; anything else falls back to bollard's
 /// own message as-is.
 fn describe_ping_error(err: bollard::errors::Error) -> AppError {
-    if let bollard::errors::Error::HyperLegacyError { err: ref hyper_err } = err {
-        if hyper_err.is_connect() {
-            return AppError::DockerNotListening;
-        }
+    if let bollard::errors::Error::HyperLegacyError { err: ref hyper_err } = err
+        && hyper_err.is_connect()
+    {
+        return AppError::DockerNotListening;
     }
     AppError::CommandFailed(err.to_string())
 }

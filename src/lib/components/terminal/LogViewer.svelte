@@ -1,7 +1,6 @@
 <script lang="ts">
   import { formatError } from "$lib/errors";
   import { onDestroy } from "svelte";
-  import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { streamLogs, streamComposeLogs, stopLogStream } from "$lib/ipc/logs";
   import { XtermController } from "$lib/xterm/XtermController";
   import Icon from "$lib/components/ui/Icon.svelte";
@@ -69,21 +68,15 @@
   }
 
   let streamId: string | null = null;
-  let unlistenData: UnlistenFn | null = null;
-  let unlistenEnd: UnlistenFn | null = null;
 
   // Set in onDestroy. Without checking this, a `startStream` call still in flight when
   // the component is torn down (e.g. the user switches tabs right after it started)
-  // would resolve *after* teardown and go on to adopt the stream/listeners anyway —
+  // would resolve *after* teardown and go on to adopt the stream anyway —
   // leaking the backend `docker logs -f` process forever, since nothing would be left
   // to stop it, and feeding an already-disposed terminal.
   let destroyed = false;
 
   async function stopCurrentStream() {
-    unlistenData?.();
-    unlistenEnd?.();
-    unlistenData = null;
-    unlistenEnd = null;
     if (streamId) {
       const id = streamId;
       streamId = null;
@@ -99,9 +92,8 @@
     // Not only for the first call: the `isRunning` false→true effect below restarts the
     // stream on its own, and a container that flaps (a restart, or two event-driven
     // refreshes in quick succession) can reach here while the previous `docker logs -f`
-    // is still alive. Overwriting `streamId` and the unlisten handles without this would
-    // strand that process — nothing else holds its id — and leave its listener attached,
-    // so two streams would write into the same terminal.
+    // is still alive. Overwriting `streamId` without this would strand that process —
+    // nothing else holds its id — so two streams would write into the same terminal.
     await stopCurrentStream();
 
     controller.clear();
@@ -109,10 +101,24 @@
     errorMessage = null;
 
     let newStreamId: string;
+    let finished = false;
+    const onEvent = (event: import("$lib/ipc/logs").LogStreamEvent) => {
+      if (event.event === "data") {
+        controller.writeLines(event.data);
+      } else if (event.event === "end") {
+        finished = true;
+        ended = true;
+        streamId = null;
+      } else {
+        finished = true;
+        errorMessage = event.data;
+        streamId = null;
+      }
+    };
     try {
       newStreamId = containerId
-        ? await streamLogs(containerId)
-        : await streamComposeLogs(project!, configFiles ?? []);
+        ? await streamLogs(containerId, onEvent)
+        : await streamComposeLogs(project!, configFiles ?? [], onEvent);
     } catch (e) {
       if (!destroyed) errorMessage = formatError(e);
       return;
@@ -122,23 +128,11 @@
       void stopLogStream(newStreamId);
       return;
     }
-    streamId = newStreamId;
-
-    const dataUnlisten = await listen<string[]>(`logs:${newStreamId}`, (event) => {
-      controller.writeLines(event.payload);
-    });
-    const endUnlisten = await listen(`logs:${newStreamId}:end`, () => {
-      ended = true;
-    });
-
     if (destroyed) {
-      dataUnlisten();
-      endUnlisten();
       void stopLogStream(newStreamId);
       return;
     }
-    unlistenData = dataUnlisten;
-    unlistenEnd = endUnlisten;
+    if (!finished) streamId = newStreamId;
   }
 
   function mountTerminal(el: HTMLDivElement) {

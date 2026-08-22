@@ -159,17 +159,17 @@ async fn run_once(app: &AppHandle, distro: &str) -> bool {
     let mut lines = BufReader::new(stdout).lines();
     while let Ok(Some(line)) = lines.next_line().await {
         received_any = true;
-        if let Ok(raw) = serde_json::from_str::<RawEvent>(&line) {
-            if is_relevant(&raw.kind, &raw.action) {
-                let _ = app.emit(
-                    "docker:event",
-                    DockerEvent {
-                        kind: raw.kind,
-                        action: raw.action,
-                        id: raw.actor.id,
-                    },
-                );
-            }
+        if let Ok(raw) = serde_json::from_str::<RawEvent>(&line)
+            && is_relevant(&raw.kind, &raw.action)
+        {
+            let _ = app.emit(
+                "docker:event",
+                DockerEvent {
+                    kind: raw.kind,
+                    action: raw.action,
+                    id: raw.actor.id,
+                },
+            );
         }
     }
 

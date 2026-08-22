@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tauri::{AppHandle, Emitter};
+use serde::Serialize;
+use tauri::ipc::Channel;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 use tokio::sync::Mutex;
@@ -19,6 +20,14 @@ pub struct LogStreamManager {
     streams: Arc<Mutex<HashMap<String, Child>>>,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase", tag = "event", content = "data")]
+pub enum LogStreamEvent {
+    Data(Vec<String>),
+    End,
+    Error(String),
+}
+
 impl LogStreamManager {
     pub fn new() -> Self {
         Self::default()
@@ -26,9 +35,9 @@ impl LogStreamManager {
 
     pub async fn start(
         &self,
-        app: AppHandle,
         distro: String,
         docker_args: Vec<String>,
+        on_event: Channel<LogStreamEvent>,
     ) -> Result<String, AppError> {
         let stream_id = Uuid::new_v4().to_string();
 
@@ -45,19 +54,18 @@ impl LogStreamManager {
         let stdout = child.stdout.take().expect("stdout was piped");
         let stderr = child.stderr.take().expect("stderr was piped");
 
-        let data_event = format!("logs:{stream_id}");
-        spawn_line_forwarder(app.clone(), data_event.clone(), stdout);
-        spawn_line_forwarder(app.clone(), data_event, stderr);
+        spawn_line_forwarder(on_event.clone(), stdout);
+        spawn_line_forwarder(on_event.clone(), stderr);
 
         self.streams.lock().await.insert(stream_id.clone(), child);
-        self.spawn_exit_watcher(app, stream_id.clone());
+        self.spawn_exit_watcher(on_event, stream_id.clone());
 
         Ok(stream_id)
     }
 
     /// Polls (rather than `.wait()`s directly) so this doesn't fight `stop()` for
     /// exclusive access to the `Child` — both just take the map's mutex briefly.
-    fn spawn_exit_watcher(&self, app: AppHandle, stream_id: String) {
+    fn spawn_exit_watcher(&self, on_event: Channel<LogStreamEvent>, stream_id: String) {
         let streams = self.streams.clone();
         tokio::spawn(async move {
             loop {
@@ -70,11 +78,19 @@ impl LogStreamManager {
                     Ok(Some(_status)) => {
                         guard.remove(&stream_id);
                         drop(guard);
-                        let _ = app.emit(&format!("logs:{stream_id}:end"), ());
+                        let _ = on_event.send(LogStreamEvent::End);
                         break;
                     }
                     Ok(None) => continue,
-                    Err(_) => break,
+                    Err(e) => {
+                        let child = guard.remove(&stream_id);
+                        drop(guard);
+                        if let Some(mut child) = child {
+                            let _ = child.kill().await;
+                        }
+                        let _ = on_event.send(LogStreamEvent::Error(e.to_string()));
+                        break;
+                    }
                 }
             }
         });
@@ -96,7 +112,7 @@ const BATCH_WINDOW: Duration = Duration::from_millis(15);
 /// window, so an extremely chatty container can't grow one emit unboundedly.
 const MAX_BATCH_LINES: usize = 500;
 
-fn spawn_line_forwarder<R>(app: AppHandle, event: String, reader: R)
+fn spawn_line_forwarder<R>(on_event: Channel<LogStreamEvent>, reader: R)
 where
     R: tokio::io::AsyncRead + Unpin + Send + 'static,
 {
@@ -131,7 +147,7 @@ where
                     _ => break,
                 }
             }
-            let _ = app.emit(&event, batch);
+            let _ = on_event.send(LogStreamEvent::Data(batch));
         }
     });
 }

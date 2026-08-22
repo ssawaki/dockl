@@ -1,6 +1,7 @@
-use tauri::{AppHandle, State};
+use tauri::{State, ipc::Channel};
 
 use crate::error::AppError;
+use crate::pty_session::PtyEvent;
 use crate::state::AppState;
 
 /// Picks the shell to attach with when the caller doesn't name one explicitly.
@@ -34,19 +35,14 @@ const DEFAULT_SHELL_PROBE: &str = r#"for s in "$(getent passwd "$(id -u)" 2>/dev
 /// PATH entries from shell startup without exposing any Docker argument to that shell.
 #[tauri::command]
 pub async fn start_attach_session(
-    app: AppHandle,
     state: State<'_, AppState>,
     container_id: String,
     shell: Option<String>,
     cols: u16,
     rows: u16,
+    on_event: Channel<PtyEvent>,
 ) -> Result<String, AppError> {
-    let distro = state
-        .current_distro
-        .read()
-        .await
-        .clone()
-        .ok_or(AppError::NotConfigured)?;
+    let distro = state.distro().await?;
     let docker_path = crate::wsl::docker_path(&distro).await?;
 
     let mut args = vec![
@@ -69,27 +65,22 @@ pub async fn start_attach_session(
         }
     }
 
-    state.pty_sessions.start(app, args, cols, rows)
+    state.pty_sessions.start(args, cols, rows, on_event)
 }
 
 /// Opens a plain interactive shell into the connected WSL2 distro, independent of any
 /// container — the "open a WSL shell" quick action.
 #[tauri::command]
 pub async fn start_wsl_shell_session(
-    app: AppHandle,
     state: State<'_, AppState>,
     cols: u16,
     rows: u16,
+    on_event: Channel<PtyEvent>,
 ) -> Result<String, AppError> {
-    let distro = state
-        .current_distro
-        .read()
-        .await
-        .clone()
-        .ok_or(AppError::NotConfigured)?;
+    let distro = state.distro().await?;
 
     let args = vec!["-d".to_string(), distro];
-    state.pty_sessions.start(app, args, cols, rows)
+    state.pty_sessions.start(args, cols, rows, on_event)
 }
 
 #[tauri::command]

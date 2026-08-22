@@ -47,12 +47,12 @@ impl AsyncRead for ChildPipe {
         let polled = Pin::new(&mut self.stdout).poll_read(cx, buf);
         if let Poll::Ready(Ok(())) = &polled {
             let fresh = &buf.filled()[before..];
-            if !fresh.is_empty() {
-                if let Ok(mut head) = self.head.lock() {
-                    let room = HEAD_CAPTURE_LIMIT.saturating_sub(head.len());
-                    if room > 0 {
-                        head.extend_from_slice(&fresh[..fresh.len().min(room)]);
-                    }
+            if !fresh.is_empty()
+                && let Ok(mut head) = self.head.lock()
+            {
+                let room = HEAD_CAPTURE_LIMIT.saturating_sub(head.len());
+                if room > 0 {
+                    head.extend_from_slice(&fresh[..fresh.len().min(room)]);
                 }
             }
         }

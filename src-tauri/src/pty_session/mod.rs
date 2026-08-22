@@ -1,3 +1,3 @@
 pub mod session;
 
-pub use session::PtySessionManager;
+pub use session::{PtyEvent, PtySessionManager};

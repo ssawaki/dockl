@@ -1,7 +1,6 @@
 <script lang="ts">
   import { formatError } from "$lib/errors";
   import { onDestroy } from "svelte";
-  import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { startAttachSession, ptyWrite, ptyResize, ptyClose } from "$lib/ipc/pty";
   import { XtermController } from "$lib/xterm/XtermController";
   import Icon from "$lib/components/ui/Icon.svelte";
@@ -16,8 +15,8 @@
   //
   // `hidden` is how the panel switches away from the Terminal tab without losing the
   // session — the same arrangement WslShellDialog uses. The component stays mounted and
-  // only its root gets `display: none`, so the pty, the scrollback and both event
-  // listeners survive. Unmounting instead (which is what the tab chain used to do) killed
+  // only its root gets `display: none`, so the pty, the scrollback and its IPC channel
+  // survive. Unmounting instead (which is what the tab chain used to do) killed
   // the session outright, dropping whatever the user was in the middle of.
   let { containerId, hidden = false }: { containerId: string; hidden?: boolean } = $props();
 
@@ -29,8 +28,6 @@
   controller.onSearchRequested(() => (searchOpen = true));
 
   let sessionId: string | null = null;
-  let unlistenData: UnlistenFn | null = null;
-  let unlistenExit: UnlistenFn | null = null;
 
   // Set in onDestroy — see LogViewer.svelte's `destroyed` for why this is needed: a
   // `startSession` call still in flight at teardown must not adopt its session
@@ -39,10 +36,6 @@
   let destroyed = false;
 
   async function stopCurrentSession() {
-    unlistenData?.();
-    unlistenExit?.();
-    unlistenData = null;
-    unlistenExit = null;
     if (sessionId) {
       const id = sessionId;
       sessionId = null;
@@ -60,8 +53,17 @@
     errorMessage = null;
 
     let newSessionId: string;
+    let exited = false;
     try {
-      newSessionId = await startAttachSession(id, controller.cols, controller.rows);
+      newSessionId = await startAttachSession(id, controller.cols, controller.rows, (event) => {
+        if (event.event === "data") {
+          controller.write(event.data);
+        } else {
+          exited = true;
+          ended = true;
+          sessionId = null;
+        }
+      });
     } catch (e) {
       if (!destroyed) errorMessage = formatError(e);
       return;
@@ -71,23 +73,11 @@
       void ptyClose(newSessionId);
       return;
     }
-    sessionId = newSessionId;
-
-    const dataUnlisten = await listen<string>(`pty:${newSessionId}:data`, (event) => {
-      controller.write(event.payload);
-    });
-    const exitUnlisten = await listen(`pty:${newSessionId}:exit`, () => {
-      ended = true;
-    });
-
     if (destroyed) {
-      dataUnlisten();
-      exitUnlisten();
       void ptyClose(newSessionId);
       return;
     }
-    unlistenData = dataUnlisten;
-    unlistenExit = exitUnlisten;
+    if (!exited) sessionId = newSessionId;
   }
 
   function mountTerminal(el: HTMLDivElement) {

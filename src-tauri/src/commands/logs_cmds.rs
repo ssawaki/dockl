@@ -1,21 +1,17 @@
-use tauri::{AppHandle, State};
+use tauri::{State, ipc::Channel};
 
+use crate::docker_bridge::LogStreamEvent;
 use crate::error::AppError;
 use crate::state::AppState;
 
 #[tauri::command]
 pub async fn stream_logs(
-    app: AppHandle,
     state: State<'_, AppState>,
     id: String,
     tail: u32,
+    on_event: Channel<LogStreamEvent>,
 ) -> Result<String, AppError> {
-    let distro = state
-        .current_distro
-        .read()
-        .await
-        .clone()
-        .ok_or(AppError::NotConfigured)?;
+    let distro = state.distro().await?;
 
     let docker_args = vec![
         "logs".into(),
@@ -24,7 +20,7 @@ pub async fn stream_logs(
         tail.to_string(),
         id,
     ];
-    state.log_streams.start(app, distro, docker_args).await
+    state.log_streams.start(distro, docker_args, on_event).await
 }
 
 #[tauri::command]
@@ -40,18 +36,13 @@ pub async fn stop_log_stream(
 /// service name, so the frontend doesn't need to juggle one stream per container.
 #[tauri::command]
 pub async fn stream_compose_logs(
-    app: AppHandle,
     state: State<'_, AppState>,
     project: String,
     config_files: Vec<String>,
     tail: u32,
+    on_event: Channel<LogStreamEvent>,
 ) -> Result<String, AppError> {
-    let distro = state
-        .current_distro
-        .read()
-        .await
-        .clone()
-        .ok_or(AppError::NotConfigured)?;
+    let distro = state.distro().await?;
 
     // `--ansi always`: compose only colors each service's line prefix when it thinks
     // it's writing to a TTY, which stdout never is here (it's piped to us) — without
@@ -72,5 +63,5 @@ pub async fn stream_compose_logs(
     docker_args.push("--tail".into());
     docker_args.push(tail.to_string());
 
-    state.log_streams.start(app, distro, docker_args).await
+    state.log_streams.start(distro, docker_args, on_event).await
 }

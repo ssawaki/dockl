@@ -1,9 +1,8 @@
 <script lang="ts">
   import { formatError } from "$lib/errors";
   import { onDestroy } from "svelte";
-  import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { trapFocus } from "$lib/actions/trapFocus";
-  import { startWslShellSession, ptyWrite, ptyResize, ptyClose } from "$lib/ipc/pty";
+  import { startWslShellSession, ptyWrite, ptyResize, ptyClose, type PtyEvent } from "$lib/ipc/pty";
   import { XtermController } from "$lib/xterm/XtermController";
   import Icon from "$lib/components/ui/Icon.svelte";
   import TerminalSearchBar from "$lib/components/terminal/TerminalSearchBar.svelte";
@@ -24,7 +23,7 @@
   // removed, see TcpEndpointDialog).
   // `hidden` is how the caller "closes" the dialog without losing the session: the
   // component stays mounted and only its root gets `display: none`, so the pty, the
-  // terminal's scrollback and both event listeners all survive until the caller really
+  // terminal's scrollback and its IPC channel all survive until the caller really
   // tears us down. `onEnded` fires when the pty's own process exits — at that point
   // there's nothing left worth preserving, which is the caller's cue to drop us.
   // Callers that leave `onEnded` unset keep the dialog up with the "session ended" banner
@@ -40,7 +39,11 @@
     title?: string;
     hidden?: boolean;
     onEnded?: () => void;
-    startSession?: (cols: number, rows: number) => Promise<string>;
+    startSession?: (
+      cols: number,
+      rows: number,
+      onEvent: (event: PtyEvent) => void,
+    ) => Promise<string>;
   } = $props();
 
   let displayTitle = $derived(title ?? $t("wslShell.title"));
@@ -53,18 +56,12 @@
   controller.onSearchRequested(() => (searchOpen = true));
 
   let sessionId: string | null = null;
-  let unlistenData: UnlistenFn | null = null;
-  let unlistenExit: UnlistenFn | null = null;
 
   // See TerminalSession.svelte's `destroyed` for why this is needed: a `startSession`
   // call still in flight when the dialog closes must not adopt its session afterwards.
   let destroyed = false;
 
   async function stopSession() {
-    unlistenData?.();
-    unlistenExit?.();
-    unlistenData = null;
-    unlistenExit = null;
     if (sessionId) {
       const id = sessionId;
       sessionId = null;
@@ -78,8 +75,18 @@
 
   async function connectSession() {
     let newSessionId: string;
+    let exited = false;
     try {
-      newSessionId = await startSession(controller.cols, controller.rows);
+      newSessionId = await startSession(controller.cols, controller.rows, (event) => {
+        if (event.event === "data") {
+          controller.write(event.data);
+        } else {
+          exited = true;
+          ended = true;
+          sessionId = null;
+          onEnded?.();
+        }
+      });
     } catch (e) {
       if (!destroyed) errorMessage = formatError(e);
       return;
@@ -89,30 +96,11 @@
       void ptyClose(newSessionId);
       return;
     }
-    sessionId = newSessionId;
-
-    const dataUnlisten = await listen<string>(`pty:${newSessionId}:data`, (event) => {
-      controller.write(event.payload);
-    });
-    const exitUnlisten = await listen(`pty:${newSessionId}:exit`, () => {
-      ended = true;
-      // The process is gone and Rust has already dropped the session, but the terminal
-      // stays focused and keeps accepting keystrokes — each of which would otherwise fire
-      // a `pty_write` at an id the backend no longer knows, and get back an error. Same
-      // for the `pty_resize` that the banner appearing below triggers via the resize
-      // observer. Dropping the id here makes both paths quietly no-op.
-      sessionId = null;
-      onEnded?.();
-    });
-
     if (destroyed) {
-      dataUnlisten();
-      exitUnlisten();
       void ptyClose(newSessionId);
       return;
     }
-    unlistenData = dataUnlisten;
-    unlistenExit = exitUnlisten;
+    if (!exited) sessionId = newSessionId;
   }
 
   function mountTerminal(el: HTMLDivElement) {
