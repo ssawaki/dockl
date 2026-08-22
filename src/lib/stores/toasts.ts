@@ -21,10 +21,12 @@ let counter = 0;
 const MAX_TOASTS = 5;
 
 /** Tracks each toast's pending auto-dismiss timer so it can be paused (e.g. on hover) and
- *  resumed later without losing track of how much time was left. */
+ *  resumed later without losing track of how much time was left. A missing `timeoutId` is
+ *  what "paused" means: hover and the output modal each pause and resume independently, so
+ *  both sides have to be able to tell the other already did it. */
 const timers = new Map<
   string,
-  { timeoutId: ReturnType<typeof setTimeout>; remaining: number; startedAt: number }
+  { timeoutId?: ReturnType<typeof setTimeout>; remaining: number; startedAt: number }
 >();
 
 function clearTimer(id: string) {
@@ -61,15 +63,16 @@ function scheduleDismiss(id: string, delay: number) {
 /** Freezes a toast's auto-dismiss countdown. No-op if the toast has none (loading/output toasts). */
 export function pauseToastTimer(id: string) {
   const timer = timers.get(id);
-  if (!timer) return;
+  if (!timer?.timeoutId) return;
   clearTimeout(timer.timeoutId);
+  timer.timeoutId = undefined;
   timer.remaining -= Date.now() - timer.startedAt;
 }
 
-/** Resumes a previously paused countdown from where it left off. */
+/** Resumes a previously paused countdown from where it left off. No-op unless it is paused. */
 export function resumeToastTimer(id: string) {
   const timer = timers.get(id);
-  if (!timer) return;
+  if (!timer || timer.timeoutId) return;
   timer.startedAt = Date.now();
   timer.timeoutId = setTimeout(() => {
     timers.delete(id);
