@@ -178,9 +178,12 @@
     onAction(id, action);
   }
 
-  let confirmDialog = $state<{ title: string; message: string; onConfirm: () => void } | null>(
-    null,
-  );
+  let confirmDialog = $state<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   function closeConfirmDialog() {
     confirmDialog = null;
@@ -203,6 +206,7 @@
     confirmDialog = {
       title: get(t)("containers.confirmComposeDown.title"),
       message: get(t)("containers.confirmComposeDown.message", { project }),
+      confirmLabel: get(t)("action.down"),
       onConfirm: () => {
         onComposeAction(project, configFiles, "down");
         closeConfirmDialog();
@@ -507,6 +511,7 @@
   <ConfirmDialog
     title={confirmDialog.title}
     message={confirmDialog.message}
+    confirmLabel={confirmDialog.confirmLabel}
     onConfirm={confirmDialog.onConfirm}
     onCancel={closeConfirmDialog}
   />
