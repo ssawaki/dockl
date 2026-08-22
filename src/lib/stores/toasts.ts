@@ -86,9 +86,9 @@ export function pushToast(message: string): string {
 
 /**
  * Turns a loading toast into success/error, then auto-dismisses it. `output` (e.g. a
- * compose command's own stdout/stderr) makes the toast clickable to view it in a modal,
- * and — since the user might click it to read *after* the auto-dismiss timer would have
- * fired — keeps the toast on screen until explicitly closed instead of dismissing it.
+ * compose command's own stdout/stderr) makes the toast clickable to view it in a modal;
+ * its countdown is paused while the toast is hovered or that modal is open, so it can't
+ * vanish out from under someone reading it.
  */
 export function resolveToast(
   id: string,
@@ -96,13 +96,9 @@ export function resolveToast(
   message: string,
   output?: string,
 ) {
-  if (output) {
-    toasts.update((list) => list.map((t) => (t.id === id ? { ...t, status, message, output } : t)));
-    return;
-  }
   const delay = status === "success" ? 3000 : 6000;
   toasts.update((list) =>
-    list.map((t) => (t.id === id ? { ...t, status, message, duration: delay } : t)),
+    list.map((t) => (t.id === id ? { ...t, status, message, output, duration: delay } : t)),
   );
   scheduleDismiss(id, delay);
 }

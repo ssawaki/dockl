@@ -20,11 +20,12 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="toast dockl-surface toast-{toast.status}"
+      class:paused={openOutputToastId === toast.id}
       animate:flip={{ duration: 200, easing: cubicOut }}
       in:fly={{ y: 14, duration: 220, easing: cubicOut }}
       out:fly={{ x: 48, duration: 180, easing: cubicOut }}
       onmouseenter={() => pauseToastTimer(toast.id)}
-      onmouseleave={() => resumeToastTimer(toast.id)}
+      onmouseleave={() => openOutputToastId !== toast.id && resumeToastTimer(toast.id)}
     >
       <div class="toast-main">
         <span class="toast-icon">
@@ -63,7 +64,10 @@
           <fluent-button
             appearance="subtle"
             size="small"
-            onclick={() => (openOutputToastId = toast.id)}
+            onclick={() => {
+              openOutputToastId = toast.id;
+              pauseToastTimer(toast.id);
+            }}
           >
             {$t("toastStack.showDetails")}
           </fluent-button>
@@ -80,7 +84,10 @@
   <ToastOutputDialog
     title={openOutputToast.message}
     output={openOutputToast.output ?? ""}
-    onClose={() => (openOutputToastId = null)}
+    onClose={() => {
+      if (openOutputToastId) resumeToastTimer(openOutputToastId);
+      openOutputToastId = null;
+    }}
   />
 {/if}
 
@@ -193,7 +200,8 @@
 
   /* Mirrors the JS timer pause in stores/toasts.ts — freezes visually in sync with the
      actual dismiss timer being paused, instead of the bar continuing to drain. */
-  .toast:hover .toast-progress {
+  .toast:hover .toast-progress,
+  .toast.paused .toast-progress {
     animation-play-state: paused;
   }
 
