@@ -56,12 +56,14 @@ export function imageRegistryUrl(image: string): string | null {
   const { domain, parts } = parseImageRef(image);
 
   if (!domain || domain === "docker.io" || domain === "index.docker.io") {
-    if (parts.length === 1) {
-      return `https://hub.docker.com/_/${parts[0]}`;
-    }
     if (parts.length >= 2) {
       return `https://hub.docker.com/r/${parts[0]}/${parts.slice(1).join("/")}`;
     }
+    // A single-segment name is left unlinked. `nginx` (an official Hub image) and
+    // `jmax-go-go-front` (built locally by Compose, never pushed anywhere) are the same
+    // shape, so linking the first means inventing a 404 for the second. Separating them
+    // needs the image's RepoDigests — empty for anything built locally — which isn't
+    // carried this far. Official images lose their link until it is.
     return null;
   }
 

@@ -157,7 +157,11 @@
               <td>{c.names.join(", ")}</td>
               <td>{c.image}</td>
               <td>
-                <span class="row-dot" class:running={c.state === "running"}></span>
+                <span
+                  class="row-dot"
+                  class:running={c.state === "running"}
+                  class:restarting={c.state === "restarting"}
+                ></span>
                 {c.status}
               </td>
               <td class="actions-cell">
@@ -318,6 +322,11 @@
 
   .row-dot.running {
     background: var(--dockl-success);
+  }
+
+  /* Matches ContainerMasterList's dot. */
+  .row-dot.restarting {
+    background: var(--dockl-warning);
   }
 
   .actions-cell {

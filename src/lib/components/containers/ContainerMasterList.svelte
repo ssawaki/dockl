@@ -237,7 +237,9 @@
   function buildMenuItems(c: ContainerSummary): ContextMenuItem[] {
     const items: ContextMenuItem[] = [];
 
-    if (c.state === "running") {
+    // `restarting` gets stop and restart but not pause: the daemon only pauses a container
+    // that is actually running, and stopping is what breaks a crash loop.
+    if (c.state === "running" || c.state === "restarting") {
       items.push({
         label: get(t)("action.stop"),
         icon: stopIcon,
@@ -248,11 +250,13 @@
         icon: restartIcon,
         onClick: () => onAction(c.id, "restart"),
       });
-      items.push({
-        label: get(t)("action.pause"),
-        icon: pauseIcon,
-        onClick: () => onAction(c.id, "pause"),
-      });
+      if (c.state === "running") {
+        items.push({
+          label: get(t)("action.pause"),
+          icon: pauseIcon,
+          onClick: () => onAction(c.id, "pause"),
+        });
+      }
     } else if (c.state === "paused") {
       items.push({
         label: get(t)("action.unpause"),
@@ -352,13 +356,19 @@
     data-roving-item
     tabindex="-1"
   >
-    <span class="dot" class:running={c.state === "running"}></span>
+    <span
+      class="dot"
+      class:running={c.state === "running"}
+      class:restarting={c.state === "restarting"}
+    ></span>
     <div class="row-text">
       <div class="row-name">{c.names.join(", ")}</div>
       <div class="row-image">{c.image}</div>
     </div>
     <div class="row-actions">
-      {#if c.state === "running"}
+      <!-- `restarting` belongs on this side: a container stuck in a crash loop under
+           `restart: always` sits there, and stopping it is the way out. -->
+      {#if c.state === "running" || c.state === "restarting"}
         <button
           class="icon-btn"
           tabindex="-1"
@@ -368,11 +378,15 @@
           <Icon svg={stopIcon} size={14} />
         </button>
       {:else}
+        <!-- A paused container is not a stopped one: the daemon rejects `start` on it with
+             409 and points at `unpause`. The icon is the same either way — both resume the
+             container — so only the command and the tooltip differ. -->
+        {@const resume = c.state === "paused" ? "unpause" : "start"}
         <button
           class="icon-btn"
           tabindex="-1"
-          title={$t("action.start")}
-          onclick={(e) => fireAction(e, c.id, "start")}
+          title={$t(`action.${resume}`)}
+          onclick={(e) => fireAction(e, c.id, resume)}
         >
           <Icon svg={playIcon} size={14} />
         </button>
@@ -600,6 +614,12 @@
 
   .dot.running {
     background: var(--dockl-success);
+  }
+
+  /* Restarting usually means a container is failing its way around a `restart:` policy.
+     This row carries no status text, so the dot is the only thing that can say so. */
+  .dot.restarting {
+    background: var(--dockl-warning);
   }
 
   .compose-icon {
