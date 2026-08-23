@@ -20,6 +20,7 @@
   import chevronRightIcon from "@fluentui/svg-icons/icons/chevron_right_16_regular.svg?raw";
   import layerIcon from "@fluentui/svg-icons/icons/layer_20_regular.svg?raw";
   import openFolderIcon from "@fluentui/svg-icons/icons/open_folder_16_regular.svg?raw";
+  import Tooltip from "$lib/components/ui/Tooltip.svelte";
 
   type ComposeStatus = "running" | "partial" | "stopped";
 
@@ -176,6 +177,23 @@
   function fireAction(e: MouseEvent, id: string, action: ContainerActionKind) {
     e.stopPropagation();
     onAction(id, action);
+  }
+
+  /**
+   * The row action button the pointer is on, for the single <Tooltip> rendered at the
+   * bottom. These replace `title`, which can't be styled and takes about a second to show.
+   *
+   * Pointer only, unlike SidebarNav's: every one of these buttons is `tabindex="-1"`
+   * (the row itself is the tab stop), so there is no keyboard focus to label.
+   */
+  let tip = $state<{ el: HTMLElement; label: string } | null>(null);
+
+  function openTip(el: HTMLElement, label: string) {
+    tip = { el, label };
+  }
+
+  function closeTip() {
+    tip = null;
   }
 
   let confirmDialog = $state<{
@@ -372,7 +390,9 @@
         <button
           class="icon-btn"
           tabindex="-1"
-          title={$t("action.stop")}
+          aria-label={$t("action.stop")}
+          onpointerenter={(e) => openTip(e.currentTarget, $t("action.stop"))}
+          onpointerleave={closeTip}
           onclick={(e) => fireAction(e, c.id, "stop")}
         >
           <Icon svg={stopIcon} size={14} />
@@ -385,7 +405,9 @@
         <button
           class="icon-btn"
           tabindex="-1"
-          title={$t(`action.${resume}`)}
+          aria-label={$t(`action.${resume}`)}
+          onpointerenter={(e) => openTip(e.currentTarget, $t(`action.${resume}`))}
+          onpointerleave={closeTip}
           onclick={(e) => fireAction(e, c.id, resume)}
         >
           <Icon svg={playIcon} size={14} />
@@ -394,7 +416,9 @@
       <button
         class="icon-btn"
         tabindex="-1"
-        title={$t("action.remove")}
+        aria-label={$t("action.remove")}
+        onpointerenter={(e) => openTip(e.currentTarget, $t("action.remove"))}
+        onpointerleave={closeTip}
         onclick={(e) => requestRemoveContainer(e, c)}
       >
         <Icon svg={deleteIcon} size={14} />
@@ -453,7 +477,9 @@
           <button
             class="icon-btn"
             tabindex="-1"
-            title={$t("action.stop")}
+            aria-label={$t("action.stop")}
+            onpointerenter={(ev) => openTip(ev.currentTarget, $t("action.stop"))}
+            onpointerleave={closeTip}
             onclick={(ev) => fireComposeAction(ev, e.name, e.configFiles, "stop")}
           >
             <Icon svg={stopIcon} size={14} />
@@ -462,7 +488,9 @@
           <button
             class="icon-btn"
             tabindex="-1"
-            title={$t("action.up")}
+            aria-label={$t("action.up")}
+            onpointerenter={(ev) => openTip(ev.currentTarget, $t("action.up"))}
+            onpointerleave={closeTip}
             onclick={(ev) => fireComposeAction(ev, e.name, e.configFiles, "up")}
           >
             <Icon svg={playIcon} size={14} />
@@ -471,7 +499,9 @@
         <button
           class="icon-btn"
           tabindex="-1"
-          title={$t("action.down")}
+          aria-label={$t("action.down")}
+          onpointerenter={(ev) => openTip(ev.currentTarget, $t("action.down"))}
+          onpointerleave={closeTip}
           onclick={(ev) => requestComposeDown(ev, e.name, e.configFiles)}
         >
           <Icon svg={deleteIcon} size={14} />
@@ -529,6 +559,10 @@
     onConfirm={confirmDialog.onConfirm}
     onCancel={closeConfirmDialog}
   />
+{/if}
+
+{#if tip}
+  <Tooltip anchor={tip.el} label={tip.label} placement="bottom" onClose={closeTip} />
 {/if}
 
 <style>

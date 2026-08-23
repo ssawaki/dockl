@@ -112,7 +112,7 @@
     /* No inline padding: items are full-bleed so their hover fill reaches both edges.
        The block padding is what keeps a square-cornered first/last item from colliding
        with the rounded corner below. */
-    padding-block: 4px;
+    padding-block: 6px;
     padding-inline: 0;
     /* Solid, not translucent: this floats over arbitrary content (list rows, etc.),
        and letting that show through would hurt legibility. */
@@ -120,7 +120,7 @@
     border: 1px solid var(--dockl-border);
     /* Tighter than --dockl-radius (8px), which is sized for panels — at this menu's
        scale it reads as a bubble rather than a menu. */
-    border-radius: 4px;
+    border-radius: 6px;
     box-shadow: var(--dockl-menu-shadow);
   }
 
@@ -172,7 +172,7 @@
 
   .menu-separator {
     height: 1px;
-    margin: 4px 6px;
+    margin: 6px 0;
     background: var(--dockl-border);
   }
 </style>

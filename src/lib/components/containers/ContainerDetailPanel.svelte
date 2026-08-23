@@ -7,7 +7,6 @@
   import CopyableValue from "$lib/components/ui/CopyableValue.svelte";
   import InfoTable from "$lib/components/ui/InfoTable.svelte";
   import { rovingFocus } from "$lib/actions/rovingFocus";
-  import { imageRegistryUrl, splitImageTag } from "$lib/dockerImage";
   import { copyToClipboard } from "$lib/clipboard";
   import LogViewer from "$lib/components/terminal/LogViewer.svelte";
   import TerminalSession from "$lib/components/terminal/TerminalSession.svelte";
@@ -185,11 +184,6 @@
     void openUrl(url);
   }
 
-  function openExternal(e: MouseEvent, url: string) {
-    e.preventDefault();
-    void openUrl(url);
-  }
-
   /** Text selected within `el`, or null if there's no selection (or it's elsewhere). */
   function selectionWithin(el: HTMLElement): string | null {
     const sel = window.getSelection();
@@ -268,8 +262,6 @@
         <LoadingState />
       {:else if activeTab === "info" && detail}
         {@const image = detail.image}
-        {@const imageUrl = imageRegistryUrl(image)}
-        {@const { repo, tag } = splitImageTag(image)}
         {@const idShort = detail.id.slice(0, 12)}
         {@const statusText = `${detail.status}${detail.health ? ` (${detail.health})` : ""}`}
         <InfoTable>
@@ -284,18 +276,7 @@
           <tr>
             <th>Image</th>
             <td>
-              <CopyableValue value={image}>
-                {#if imageUrl}
-                  <!-- Registry URL on the public internet, not an app route. `resolve()`
-                         throws on anything that isn't an absolute internal pathname. -->
-                  <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-                  <a class="ext-link" href={imageUrl} onclick={(e) => openExternal(e, imageUrl)}
-                    >{repo}</a
-                  >{tag ? `:${tag}` : ""}
-                {:else}
-                  {image}
-                {/if}
-              </CopyableValue>
+              <CopyableValue value={image}>{image}</CopyableValue>
             </td>
           </tr>
           <tr>
