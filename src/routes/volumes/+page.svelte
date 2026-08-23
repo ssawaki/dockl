@@ -208,7 +208,7 @@
 
   .error-banner {
     padding: 8px 12px;
-    color: var(--dockl-danger);
-    border-color: var(--dockl-danger);
+    color: var(--dockl-danger-text);
+    border-color: var(--dockl-danger-text);
   }
 </style>

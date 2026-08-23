@@ -152,7 +152,7 @@
   }
 
   .toast-error .toast-icon {
-    color: var(--dockl-danger);
+    color: var(--dockl-danger-text);
   }
 
   .toast-btn {

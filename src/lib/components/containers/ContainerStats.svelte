@@ -305,7 +305,7 @@
   }
 
   .stats-banner.error {
-    color: var(--dockl-danger);
+    color: var(--dockl-danger-text);
   }
 
   .stats-body {

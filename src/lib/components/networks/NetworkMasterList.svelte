@@ -81,7 +81,7 @@
 
   .icon-btn:hover:not(:disabled) {
     background: var(--dockl-surface-hover);
-    color: var(--dockl-danger);
+    color: var(--dockl-danger-text);
   }
 
   .icon-btn:disabled {

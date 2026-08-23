@@ -46,16 +46,37 @@
      page content (not just the Mica/Acrylic window backdrop) and need to fully hide it. */
   --dockl-titlebar-opaque: rgb(255, 255, 255);
   --dockl-danger: #c42b1c;
+  /* Danger as *text* rather than as a fill. The two can't share one value: --dockl-danger
+     has to stay dark enough to carry white glyphs (the close button, the destructive
+     confirm button), which leaves it at 2.6:1 against the dark theme's surfaces. Same
+     colour here in light, where it already clears AA. */
+  --dockl-danger-text: #c42b1c;
   --dockl-success: #0f7b0f;
   --dockl-warning: #9d5d00;
   --dockl-radius: 8px;
-  --dockl-font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  /* Windows 11 registers Segoe UI Variable as three optical-size families (Small / Text /
+     Display), not under the bare name — asking for that alone fell through to the static
+     Segoe UI. "Text" is the 12–28px cut, which covers every size this app uses bar the
+     11px labels. The bare name stays as a fallback in case a future Windows registers it. */
+  --dockl-font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   --dockl-scrollbar-thumb: rgba(0, 0, 0, 0.25);
   --dockl-scrollbar-thumb-hover: rgba(0, 0, 0, 0.4);
   --dockl-selection-bg: rgba(15, 108, 189, 0.5);
   /* Solid (non-Mica-blended) background for floating overlays like context menus,
-     where content behind them showing through would hurt readability. */
-  --dockl-menu-bg: #faf9f8;
+     where content behind them showing through would hurt readability.
+     Has to stay clear of --dockl-solid-bg (#f3f2f1): in solid material mode that's the
+     page underneath, and an overlay that matches it reads as a hole rather than a layer. */
+  --dockl-menu-bg: #f6f5f4;
+  /* Two layers, per Fluent's flyout elevation: a wide soft one for the cast shadow and a
+     tight one that reads as the menu's own edge. Needs a per-theme value because a single
+     black alpha that looks right on a light page disappears against a dark one. */
+  --dockl-menu-shadow: 0 8px 16px rgba(0, 0, 0, 0.14), 0 0 2px rgba(0, 0, 0, 0.12);
+  /* Hover/keyboard highlight inside a menu. Separate from --dockl-surface-hover, which is
+     tuned for translucent panels sitting on the Mica backdrop: over an opaque --dockl-menu-bg
+     the dark theme's variant composites to within a few values of the menu itself. */
+  --dockl-menu-hover: rgba(0, 0, 0, 0.06);
+  /* Same highlight for a destructive item, tinted toward --dockl-danger. */
+  --dockl-menu-hover-danger: rgba(196, 43, 28, 0.1);
   /* The opaque page background used in "solid" material mode (no Mica/Acrylic). */
   --dockl-solid-bg: #f3f2f1;
 }
@@ -64,6 +85,9 @@
   color-scheme: dark;
   --dockl-text-primary: #f3f2f1;
   --dockl-text-secondary: #c8c6c4;
+  /* Lifted well above --dockl-danger, which stays put because it's still the fill behind
+     white glyphs. 5.7:1 on --dockl-menu-bg, against 2.6:1 for the unlifted red. */
+  --dockl-danger-text: #ff7b72;
   --dockl-surface: rgba(32, 32, 32, 0.55);
   --dockl-surface-hover: rgba(45, 45, 45, 0.7);
   --dockl-surface-hover-strong: rgba(60, 60, 60, 0.92);
@@ -81,6 +105,13 @@
   --dockl-scrollbar-thumb: rgba(255, 255, 255, 0.25);
   --dockl-scrollbar-thumb-hover: rgba(255, 255, 255, 0.4);
   --dockl-menu-bg: #292929;
+  --dockl-menu-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 0.3);
+  /* White rather than the light theme's black tint: over #292929 a darkening overlay has
+     nowhere to go, so the highlight has to come up toward white instead. */
+  --dockl-menu-hover: rgba(255, 255, 255, 0.09);
+  /* A lighter red than --dockl-danger, for the same reason: the #c42b1c tint darkens
+     against #292929 and lands on brown rather than reading as red. */
+  --dockl-menu-hover-danger: rgba(255, 99, 89, 0.14);
   --dockl-solid-bg: #202020;
 }
 

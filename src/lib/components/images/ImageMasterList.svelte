@@ -120,6 +120,6 @@
 
   .icon-btn:hover {
     background: var(--dockl-surface-hover);
-    color: var(--dockl-danger);
+    color: var(--dockl-danger-text);
   }
 </style>

@@ -542,7 +542,7 @@
   }
 
   .error-banner {
-    color: var(--dockl-danger);
+    color: var(--dockl-danger-text);
   }
 
   h3 {

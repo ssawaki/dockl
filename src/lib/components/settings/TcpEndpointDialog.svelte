@@ -251,6 +251,6 @@
 
   .status-error {
     font-size: 12px;
-    color: var(--dockl-danger);
+    color: var(--dockl-danger-text);
   }
 </style>

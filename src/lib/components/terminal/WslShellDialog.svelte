@@ -272,7 +272,7 @@
   }
 
   .term-banner.error {
-    color: var(--dockl-danger);
+    color: var(--dockl-danger-text);
   }
 
   /* See LogViewer.svelte for why the padding lives on the outer element rather than
