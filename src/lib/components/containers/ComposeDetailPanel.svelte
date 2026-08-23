@@ -1,12 +1,9 @@
 <script lang="ts">
   import type { ContainerSummary, DetailTabId } from "$lib/types";
   import CopyableValue from "$lib/components/ui/CopyableValue.svelte";
-  import Icon from "$lib/components/ui/Icon.svelte";
   import LogViewer from "$lib/components/terminal/LogViewer.svelte";
   import { rovingFocus } from "$lib/actions/rovingFocus";
   import { t } from "$lib/stores/i18n";
-  import stopIcon from "@fluentui/svg-icons/icons/stop_16_filled.svg?raw";
-  import playIcon from "@fluentui/svg-icons/icons/play_16_filled.svg?raw";
 
   // `activeTab` is bound from the parent route (shared with ContainerDetailPanel) so
   // that switching from a container to this Compose project — where "Stats"/"Terminal"
@@ -148,7 +145,6 @@
             <th>Name</th>
             <th>Image</th>
             <th>Status</th>
-            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -163,13 +159,6 @@
                   class:restarting={c.state === "restarting"}
                 ></span>
                 {c.status}
-              </td>
-              <td class="actions-cell">
-                {#if c.state === "running"}
-                  <Icon svg={stopIcon} size={13} />
-                {:else}
-                  <Icon svg={playIcon} size={13} />
-                {/if}
               </td>
             </tr>
           {/each}
@@ -327,10 +316,5 @@
   /* Matches ContainerMasterList's dot. */
   .row-dot.restarting {
     background: var(--dockl-warning);
-  }
-
-  .actions-cell {
-    color: var(--dockl-text-secondary);
-    text-align: right;
   }
 </style>
