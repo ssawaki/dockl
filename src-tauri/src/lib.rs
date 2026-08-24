@@ -40,6 +40,11 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_notification::init())
+        // Multi-monitor/taskbar-position-aware tray-relative window placement for the
+        // tray popup (see `tray::show_tray_menu`) — `on_tray_event` (called from
+        // `tray::build_tray`'s own event handler) is what feeds it the tray icon's actual
+        // screen position.
+        .plugin(tauri_plugin_positioner::init())
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             system_menu::show_system_menu,
@@ -78,6 +83,8 @@ pub fn run() {
             commands::pty_resize,
             commands::pty_close,
             commands::set_window_material,
+            tray::tray_menu_open_main,
+            tray::tray_menu_quit,
         ])
         .setup(|app| {
             // Built here instead of letting `tauri.conf.json`'s `windows` entry

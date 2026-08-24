@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { formatError } from "$lib/errors";
   import { listContainers, containerAction } from "$lib/ipc/containers";
   import { composeAction, type ComposeActionKind } from "$lib/ipc/compose";
@@ -11,6 +12,7 @@
   import arrowClockwiseIcon from "@fluentui/svg-icons/icons/arrow_clockwise_16_regular.svg?raw";
   import { pushToast, resolveToast } from "$lib/stores/toasts";
   import { connection } from "$lib/stores/connection";
+  import { pendingTraySelection } from "$lib/stores/trayContainerSelection";
   import { refreshOnDockerEvents } from "$lib/dockerEvents.svelte";
   import { f5RefreshHandler } from "$lib/shortcuts";
   import type { ContainerSummary, ContainerActionKind, DetailTabId } from "$lib/types";
@@ -126,6 +128,21 @@
   }
 
   refreshOnDockerEvents(() => $connection.status === "connected", ["container"], refresh);
+
+  // `+layout.svelte` (always mounted, regardless of which route is showing) is what
+  // actually receives the tray's `tray:select-container` event and navigates here — by
+  // the time this page mounts, the target id is waiting in this store rather than lost
+  // to whatever other route the window was showing when the tray was clicked. A
+  // subscription (not `$effect`, which AGENTS.md rules out for assigning state) fires
+  // once immediately with whatever's already there, covering both that case and one
+  // arriving later while already mounted.
+  onMount(() =>
+    pendingTraySelection.subscribe((id) => {
+      if (id === null) return;
+      selectContainerFromProject(id);
+      pendingTraySelection.set(null);
+    }),
+  );
 </script>
 
 <svelte:window onkeydown={f5RefreshHandler(manualRefresh)} />

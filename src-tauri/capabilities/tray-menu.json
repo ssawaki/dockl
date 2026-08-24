@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "tray-menu",
+  "description": "Capability for the tray flyout popup — core defaults only, none of the extra window-chrome/notification/store/autostart permissions granted to the main window in default.json",
+  "windows": ["tray-menu"],
+  "permissions": ["core:default"]
+}

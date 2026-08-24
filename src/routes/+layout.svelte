@@ -2,18 +2,8 @@
   import { formatError } from "$lib/errors";
   import "../lib/styles/theme.css";
   import "@xterm/xterm/css/xterm.css";
-  import "@fluentui/web-components/button/define.js";
-  import "@fluentui/web-components/badge/define.js";
-  import "@fluentui/web-components/switch/define.js";
-  import "@fluentui/web-components/checkbox/define.js";
-  import "@fluentui/web-components/divider/define.js";
-  import "@fluentui/web-components/radio-group/define.js";
-  import "@fluentui/web-components/radio/define.js";
-  import "@fluentui/web-components/spinner/define.js";
-  import "@fluentui/web-components/dropdown/define.js";
-  import "@fluentui/web-components/listbox/define.js";
-  import "@fluentui/web-components/option/define.js";
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { goto } from "$app/navigation";
@@ -27,10 +17,37 @@
   import { ensureConnected, getConnectedDistro } from "$lib/connection";
   import { setupCurrentDistro, setupDistroIsRunning } from "$lib/ipc/setup";
   import { connection } from "$lib/stores/connection";
+  import { pendingTraySelection } from "$lib/stores/trayContainerSelection";
   import { initI18n, t } from "$lib/stores/i18n";
 
-  void initAppearance();
-  void initI18n();
+  // The tray's own popup window (`tray-menu` in `tauri.conf.json`) loads this same
+  // SvelteKit build as a small borderless overlay, always on this one route — a plain
+  // constant, not `$derived`, since it can't change for the window's lifetime. The app
+  // chrome below has no meaning there, so it's skipped, along with everything only that
+  // chrome needs: the Mica/Acrylic material `initAppearance` pushes to the *current*
+  // native window, `initI18n` (the popup's own labels are hardcoded Japanese, not `$t(...)`
+  // lookups — and it has no `store:default` permission to load the settings store
+  // `initI18n` reads from, see `capabilities/tray-menu.json`), and the Fluent Web
+  // Components custom-element registrations, which are real work this window — rebuilt
+  // from scratch on every open, see `tray::show_tray_menu` on the Rust side — would
+  // otherwise redo on every click for markup it never renders.
+  const isTrayMenu = get(page).url.pathname === "/tray-menu";
+
+  if (!isTrayMenu) {
+    void initAppearance();
+    void initI18n();
+    void import("@fluentui/web-components/button/define.js");
+    void import("@fluentui/web-components/badge/define.js");
+    void import("@fluentui/web-components/switch/define.js");
+    void import("@fluentui/web-components/checkbox/define.js");
+    void import("@fluentui/web-components/divider/define.js");
+    void import("@fluentui/web-components/radio-group/define.js");
+    void import("@fluentui/web-components/radio/define.js");
+    void import("@fluentui/web-components/spinner/define.js");
+    void import("@fluentui/web-components/dropdown/define.js");
+    void import("@fluentui/web-components/listbox/define.js");
+    void import("@fluentui/web-components/option/define.js");
+  }
 
   let { children } = $props();
 
@@ -52,6 +69,7 @@
   // client-side navigations) — individual routes used to each repeat this same
   // `docker ps`-based check on every visit; now they just read `$connection`.
   onMount(() => {
+    if (isTrayMenu) return;
     void connect();
 
     // Two things the app can't notice on its own, since nothing polls WSL any more:
@@ -72,6 +90,16 @@
       }),
       getCurrentWindow().onFocusChanged(({ payload: focused }) => {
         if (focused && $connection.status === "stopped") void connect();
+      }),
+      // Fired by the tray's "設定" item (see `tray::build_tray` on the Rust side).
+      listen("tray:open-settings", () => void goto(resolve("/settings"))),
+      // Fired by the tray's running-containers list. Navigates here (not just wherever
+      // the window already was) since that list only makes sense on the containers page,
+      // and `pendingTraySelection` is how the click's target reaches its `selectedId`
+      // once mounted there.
+      listen<string>("tray:select-container", (event) => {
+        pendingTraySelection.set(event.payload);
+        void goto(resolve("/"));
       }),
     ]);
 
@@ -145,42 +173,46 @@
 
 <svelte:window oncontextmenu={disableDefaultContextMenu} onkeydown={handleGlobalKeydown} />
 
-<div class="dockl-app">
-  <Titlebar />
-  <div class="dockl-body">
-    <SidebarNav />
-    <div class="dockl-content">
-      {#if gated}
-        <LoadingState
-          message={$connection.status === "starting" ? $t("app.starting") : $t("app.connecting")}
-        />
-      {:else if $connection.status === "stopped" && !ALWAYS_AVAILABLE.has($page.url.pathname)}
-        <div class="connect-failed">
-          <p class="failed-title">{$t("app.wslStopped")}</p>
-          <p class="failed-detail">{$t("app.wslStoppedHint")}</p>
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <fluent-button appearance="accent" onclick={() => connect({ startIfStopped: true })}
-            >{$t("app.startWsl")}</fluent-button
-          >
-        </div>
-      {:else if $connection.status === "failed" && !ALWAYS_AVAILABLE.has($page.url.pathname)}
-        <div class="connect-failed">
-          <p class="failed-title">{$t("app.connectFailed")}</p>
-          <p class="failed-detail">{$connection.error}</p>
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <fluent-button appearance="accent" onclick={() => connect({ startIfStopped: true })}
-            >{$t("app.retry")}</fluent-button
-          >
-        </div>
-      {:else}
-        {@render children()}
-      {/if}
+{#if isTrayMenu}
+  {@render children()}
+{:else}
+  <div class="dockl-app">
+    <Titlebar />
+    <div class="dockl-body">
+      <SidebarNav />
+      <div class="dockl-content">
+        {#if gated}
+          <LoadingState
+            message={$connection.status === "starting" ? $t("app.starting") : $t("app.connecting")}
+          />
+        {:else if $connection.status === "stopped" && !ALWAYS_AVAILABLE.has($page.url.pathname)}
+          <div class="connect-failed">
+            <p class="failed-title">{$t("app.wslStopped")}</p>
+            <p class="failed-detail">{$t("app.wslStoppedHint")}</p>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <fluent-button appearance="accent" onclick={() => connect({ startIfStopped: true })}
+              >{$t("app.startWsl")}</fluent-button
+            >
+          </div>
+        {:else if $connection.status === "failed" && !ALWAYS_AVAILABLE.has($page.url.pathname)}
+          <div class="connect-failed">
+            <p class="failed-title">{$t("app.connectFailed")}</p>
+            <p class="failed-detail">{$connection.error}</p>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <fluent-button appearance="accent" onclick={() => connect({ startIfStopped: true })}
+              >{$t("app.retry")}</fluent-button
+            >
+          </div>
+        {:else}
+          {@render children()}
+        {/if}
+      </div>
     </div>
+    <ToastStack />
   </div>
-  <ToastStack />
-</div>
+{/if}
 
 <style>
   .dockl-body {

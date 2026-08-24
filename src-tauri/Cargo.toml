@@ -55,4 +55,5 @@ thiserror = "1"
 anyhow = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 async-trait = "0.1"
+tauri-plugin-positioner = { version = "2.3.3", features = ["tray-icon"] }
 

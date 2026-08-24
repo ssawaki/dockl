@@ -61,7 +61,7 @@
   --dockl-font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   --dockl-scrollbar-thumb: rgba(0, 0, 0, 0.25);
   --dockl-scrollbar-thumb-hover: rgba(0, 0, 0, 0.4);
-  --dockl-selection-bg: rgba(15, 108, 189, 0.5);
+  --dockl-selection-bg: rgba(58, 160, 255, 0.3);
   /* Solid (non-Mica-blended) background for floating overlays like context menus,
      where content behind them showing through would hurt readability.
      Has to stay clear of --dockl-solid-bg (#f3f2f1): in solid material mode that's the
