@@ -2,6 +2,7 @@
   import { formatError } from "$lib/errors";
   import { onMount } from "svelte";
   import { get } from "svelte/store";
+  import { invoke } from "@tauri-apps/api/core";
   import { load, type Store } from "@tauri-apps/plugin-store";
   import {
     isEnabled as autostartIsEnabled,
@@ -41,6 +42,7 @@
 
   let store: Store | null = null;
   let trayEnabled = $state(false);
+  let trayFlyoutEnabled = $state(false);
   let autostartEnabled = $state(false);
   let reconnecting = $state(false);
   let errorMessage = $state<string | null>(null);
@@ -56,6 +58,7 @@
   onMount(async () => {
     store = await load("settings.json", { autoSave: true });
     trayEnabled = (await store.get<boolean>("trayEnabled")) ?? false;
+    trayFlyoutEnabled = (await store.get<boolean>("trayFlyoutEnabled")) ?? false;
     autostartEnabled = await autostartIsEnabled();
     connectionMode = await getConnectionMode();
     requestAnimationFrame(() => {
@@ -67,6 +70,15 @@
     const checked = (e.target as HTMLInputElement).checked;
     trayEnabled = checked;
     await store?.set("trayEnabled", checked);
+  }
+
+  // Takes effect on the very next tray click — see `tray::tray_apply_style` on the Rust
+  // side, which just re-reads this same setting and re-applies it to the live tray icon.
+  async function toggleTrayFlyout(e: Event) {
+    const checked = (e.target as HTMLInputElement).checked;
+    trayFlyoutEnabled = checked;
+    await store?.set("trayFlyoutEnabled", checked);
+    await invoke("tray_apply_style");
   }
 
   async function toggleAutostart(e: Event) {
@@ -236,6 +248,11 @@
     <label class="row toggle-row">
       <fluent-switch checked={trayEnabled} onchange={toggleTray}></fluent-switch>
       <span>{$t("settings.tray.toggle")}</span>
+    </label>
+    <!-- svelte-ignore a11y_label_has_associated_control -->
+    <label class="row toggle-row">
+      <fluent-switch checked={trayFlyoutEnabled} onchange={toggleTrayFlyout}></fluent-switch>
+      <span>{$t("settings.tray.flyoutToggle")}</span>
     </label>
   </section>
 

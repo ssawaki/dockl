@@ -48,36 +48,53 @@
   }
 </script>
 
-<div class="popup">
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="item" onclick={openMain}>Docklを開く</div>
+<div class="wrapper">
+  <div class="popup">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="item" onclick={openMain}>Docklを開く</div>
 
-  {#if containers.length > 0}
+    {#if containers.length > 0}
+      <div class="separator"></div>
+      <div class="section-label">起動中のコンテナ</div>
+      <div class="container-list">
+        {#each containers as c (c.id)}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="item container-item" onclick={() => selectContainer(c.id)}>
+            <span class="dot"></span>
+            <span class="container-name">{c.names.join(", ")}</span>
+          </div>
+        {/each}
+      </div>
+    {/if}
+
     <div class="separator"></div>
-    <div class="section-label">起動中のコンテナ</div>
-    <div class="container-list">
-      {#each containers as c (c.id)}
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="item container-item" onclick={() => selectContainer(c.id)}>
-          <span class="dot"></span>
-          <span class="container-name">{c.names.join(", ")}</span>
-        </div>
-      {/each}
-    </div>
-  {/if}
-
-  <div class="separator"></div>
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="item" onclick={openSettings}>設定</div>
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="item" onclick={quit}>終了</div>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="item" onclick={openSettings}>設定</div>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="item" onclick={quit}>終了</div>
+  </div>
 </div>
 
 <style>
+  /* `Position::TrayCenter` (Rust side) places this *window* by its bottom edge, against
+     the tray icon it sits above — sized to the window's full configured height regardless
+     of how much content there actually is. `.popup` below is `height: auto`, so without
+     this wrapper it renders from the window's top edge and leaves empty space under it,
+     which visibly detaches the menu from the tray icon whenever there's little content.
+     Pinning this to the bottom keeps `.popup`'s own bottom edge, not the window's, against
+     the tray. Scoped to this element rather than `:global(body)` — a global body rule from
+     one route's own stylesheet has no business reaching any other route's window. */
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+  }
+
   .popup {
     display: flex;
     flex-direction: column;

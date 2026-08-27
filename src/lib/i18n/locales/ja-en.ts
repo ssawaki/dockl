@@ -274,6 +274,8 @@ export const jaEn: Record<MessageKey, string> = {
 
   "settings.tray.heading": "タスクトレイ",
   "settings.tray.toggle": "ウィンドウを閉じてもタスクトレイに常駐する",
+  "settings.tray.flyoutToggle":
+    "右クリックメニューをリッチな見た目のポップアップにする（表示が少し遅くなります）",
 
   "settings.autostart.heading": "自動起動",
   "settings.autostart.toggle": "Windowsサインイン時にDocklを自動起動する",

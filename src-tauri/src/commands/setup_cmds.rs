@@ -34,7 +34,8 @@ pub async fn setup_connect(
     wsl::with_connect_timeout(&distro, connection.list_containers(true)).await?;
 
     state.set_target(Arc::new(connection), distro.clone()).await;
-    state.event_manager.start(app, distro).await;
+    state.event_manager.start(app.clone(), distro).await;
+    crate::tray::apply_style(&app);
     Ok(())
 }
 

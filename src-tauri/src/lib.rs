@@ -83,8 +83,9 @@ pub fn run() {
             commands::pty_resize,
             commands::pty_close,
             commands::set_window_material,
-            tray::tray_menu_open_main,
-            tray::tray_menu_quit,
+            tray::flyout::tray_menu_open_main,
+            tray::flyout::tray_menu_quit,
+            tray::tray_apply_style,
         ])
         .setup(|app| {
             // Built here instead of letting `tauri.conf.json`'s `windows` entry

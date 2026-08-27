@@ -294,6 +294,8 @@ export const en = {
 
   "settings.tray.heading": "System tray",
   "settings.tray.toggle": "Keep running in the system tray when the window is closed",
+  "settings.tray.flyoutToggle":
+    "Use a richer-looking popup for the right-click menu (opens a bit slower)",
 
   "settings.autostart.heading": "Startup",
   "settings.autostart.toggle": "Launch Dockl automatically when you sign in to Windows",

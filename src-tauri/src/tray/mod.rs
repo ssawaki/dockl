@@ -1,24 +1,74 @@
+//! The tray icon and its right-click menu, in one of two styles the user picks in
+//! Settings (`trayFlyoutEnabled` — see `tray_style`). Split into one module per style so
+//! either can be read, changed, or (if this ever stops earning its keep) deleted without
+//! touching the other:
+//!
+//! - [`native`]: a native Win32 menu, rebuilt from the current container list on demand.
+//!   No window is ever created, so this has no per-open cost at all — the default.
+//! - [`flyout`]: a small WebView-rendered popup (`src/routes/tray-menu`) with its own
+//!   open animation, at the cost of ~150-300ms to spin up a WebView2 instance per open
+//!   (rebuilt fresh each time — see its own doc comment for why it isn't kept alive
+//!   hidden instead).
+//!
+//! This file only owns what's shared: the tray icon itself, the style switch, and
+//! left-click (always "open the main window", regardless of style).
+
+// `pub`, not `mod` — `tauri::generate_handler!` (in lib.rs) needs the actual definition
+// path (`tray::flyout::tray_menu_open_main`) for its two `#[tauri::command]`s; the
+// per-command items that macro expands to aren't carried across a `pub use` re-export.
+pub mod flyout;
+mod native;
+
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use tauri::{
-    AppHandle, Manager, WebviewWindowBuilder, WindowEvent,
+    AppHandle, Listener, Manager,
+    menu::Menu,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
-use tauri_plugin_positioner::{Position, WindowExt};
+use tauri_plugin_store::StoreExt;
 
 const TRAY_ID: &str = "main";
 const TRAY_MENU_LABEL: &str = "tray-menu";
-/// A click within this long after either (a) a double-click or (b) the popup losing focus
-/// is treated as the tail end of that same gesture rather than a fresh request to open the
-/// popup — see the two `recent(...)` checks below for why each exists.
-const CLICK_MERGE_WINDOW: Duration = Duration::from_millis(400);
 
-/// Whether `at` (if any) was less than `CLICK_MERGE_WINDOW` ago.
-fn recent(at: &Mutex<Option<Instant>>) -> bool {
-    at.lock()
-        .unwrap()
-        .is_some_and(|t| t.elapsed() < CLICK_MERGE_WINDOW)
+/// Matches `dockerEvents.svelte.ts`'s own debounce, and for the same reason: a single
+/// `docker compose up`/`down` fires a dozen-plus `docker:event`s within milliseconds, and
+/// without this each one would trigger its own `list_containers` round trip (a fresh
+/// `wsl.exe` process per call under ShellOut mode) to rebuild the native menu.
+const DOCKER_EVENT_DEBOUNCE: Duration = Duration::from_millis(400);
+
+/// Bumped by every `apply_style` call and checked before a native menu build applies its
+/// result. `apply_style` fires often and concurrently (startup, every `docker:event`,
+/// post-connect, the Settings toggle) but its `Native` branch awaits `list_containers`
+/// first — without this, a slow call finishing after a newer one (or after the user's
+/// switched to `Flyout`) can re-attach a stale menu on top of a newer or absent one.
+static MENU_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TrayStyle {
+    Native,
+    Flyout,
+}
+
+/// Reads `trayFlyoutEnabled` from the settings store — `false` (native menu) by default.
+/// This project's own priorities put robustness/performance ahead of visual polish (see
+/// AGENTS.md), and a native menu has no window-creation cost at all, so it's the safer
+/// default; the WebView flyout is there for whoever wants the richer look and doesn't mind
+/// the per-open cost that comes with it.
+fn tray_style(app: &AppHandle) -> TrayStyle {
+    let flyout_enabled = app
+        .store("settings.json")
+        .ok()
+        .and_then(|store| store.get("trayFlyoutEnabled"))
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false);
+    if flyout_enabled {
+        TrayStyle::Flyout
+    } else {
+        TrayStyle::Native
+    }
 }
 
 fn show_main_window(app: &AppHandle) {
@@ -29,153 +79,123 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
-/// Closes the popup outright rather than hiding it. It's rebuilt fresh on every open (see
-/// `show_tray_menu`) instead of being kept alive off-screen: Tauri/WebView2 throttles a
-/// *hidden* window's JS runtime hard enough to silently break event delivery
-/// (tauri-apps/tauri#3654, closed "not planned") — this is what broke
-/// `listen("tray-menu:opened", ...)` back when the popup was instead parked at
-/// (-10000, -10000) and kept alive.
-fn close_tray_menu(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(TRAY_MENU_LABEL) {
-        let _ = window.close();
-    }
-}
-
-/// Opens the main window and dismisses the tray popup — called from the popup's own
-/// "Docklを開く" button and running-container rows (`src/routes/tray-menu`); the
-/// container rows additionally `emit("tray:select-container", id)` themselves first (see
-/// `+layout.svelte`), same as the "設定" row does with `tray:open-settings`.
-#[tauri::command]
-pub fn tray_menu_open_main(app: AppHandle) {
-    show_main_window(&app);
-    close_tray_menu(&app);
-}
-
-/// Quits the app — called from the popup's "終了" row.
-#[tauri::command]
-pub fn tray_menu_quit(app: AppHandle) {
-    app.exit(0);
-}
-
-/// Builds the persistent tray icon. Both left- and right-click open a small
-/// WebView-rendered popup (`tray-menu`, declared in `tauri.conf.json`) instead of a native
-/// menu, immediately — no delay to wait out a possible second click, so a genuine
-/// double-click briefly opens the popup before the `DoubleClick` handler below closes it
-/// again and opens the main window instead. That flash is short enough (well under normal
-/// double-click cadence) to read as instant rather than as the popup actually opening.
+/// Builds the persistent tray icon. Left-click always opens/focuses the main window.
+/// Right-click's behavior depends on `tray_style`:
+/// - Native: a menu stays attached via `tray.set_menu(...)` (see `apply_style`), so
+///   Windows shows it itself. That popup and this `Right` arm are independent, though —
+///   the click still reaches `on_tray_icon_event` even with a menu attached — so the
+///   arm checks the style itself and does nothing while native is active, rather than
+///   opening the flyout on top of the native popup that's already showing.
+/// - Flyout: no menu is ever attached (`apply_style` clears it), so the `Right` arm below
+///   is what actually runs, opening `flyout::show`'s WebView popup instead.
 ///
-/// Windows delivers a double-click as an extra event on top of the two ordinary clicks,
-/// not instead of them — both the first *and second* click's `Up` still fire as plain
-/// `Click` events — so `last_double_click_at` is what stops that second `Up` from being
-/// treated as a fresh click and reopening the popup right after `DoubleClick` just closed
-/// it.
-///
-/// Clicking the tray icon while the popup is already open should toggle it closed, not
-/// reopen it: that click first steals focus from the popup, which fires `Focused(false)`
-/// and closes it, then reaches this handler as an ordinary `Click` — indistinguishable from
-/// a fresh "open" request unless something records that the close *just* happened. That's
-/// `last_close_at`, checked by both the left- and right-click arms below.
+/// Switching styles mid-session (`tray_apply_style`, called from Settings) just calls
+/// `apply_style` again — nothing here needs to change.
 pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    // Set whenever the popup's own `Focused(false)` fires — including from
-    // `tray_menu_open_main` itself (opening the main window steals focus from the popup
-    // first) — so a same-instant tray click reaching the arms below can tell "this is the
-    // tail end of something that just closed the popup" from a fresh request to open one.
-    let last_close_at: Arc<Mutex<Option<Instant>>> = Arc::new(Mutex::new(None));
-    // Set when a double-click fires, so the ordinary `Up` click that Windows still sends
-    // for the double-click's second press (see the doc comment above) doesn't get treated
-    // as a fresh single click and reopen the popup right after `show_main_window` ran.
-    let last_double_click_at: Arc<Mutex<Option<Instant>>> = Arc::new(Mutex::new(None));
+    let flyout_state = flyout::FlyoutState::new();
 
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(app.default_window_icon().unwrap().clone())
         .tooltip(crate::product_name(app))
+        // `tray-icon` defaults this to `true`; without it, a left-click on Windows shows
+        // the attached native menu (via WM_LBUTTONUP) on top of `show_main_window` below.
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| native::on_menu_event(app, event))
         .on_tray_icon_event(move |tray, event| {
             let app = tray.app_handle();
             // Feeds the plugin the tray icon's actual screen position/size, which
-            // `show_tray_menu`'s `Position::TrayCenter` placement depends on.
+            // `flyout::show`'s `Position::TrayCenter` placement depends on.
             tauri_plugin_positioner::on_tray_event(app, &event);
             match event {
                 TrayIconEvent::Click {
-                    button: MouseButton::Left | MouseButton::Right,
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    ..
+                } => show_main_window(app),
+                TrayIconEvent::Click {
+                    button: MouseButton::Right,
                     button_state: MouseButtonState::Up,
                     ..
                 } => {
-                    if recent(&last_double_click_at) || recent(&last_close_at) {
+                    if tray_style(app) != TrayStyle::Flyout || flyout_state.recently_closed() {
                         return;
                     }
-                    show_tray_menu(app, &last_close_at);
-                }
-                TrayIconEvent::DoubleClick {
-                    button: MouseButton::Left,
-                    ..
-                } => {
-                    *last_double_click_at.lock().unwrap() = Some(Instant::now());
-                    close_tray_menu(app);
-                    show_main_window(app);
+                    flyout::show(app, &flyout_state);
                 }
                 _ => {}
             }
         })
         .build(app)?;
 
+    apply_style(app);
+
+    // Keeps the native menu's running-container list current without polling — the same
+    // `docker:event` stream every container list in the app already refreshes from (see
+    // `DockerEventManager`). `apply_style` is a no-op beyond one `set_menu(None)` call
+    // while the flyout style is active. Debounced by `DOCKER_EVENT_DEBOUNCE`: aborts
+    // whatever refresh is still pending and schedules a fresh one, so a burst of events
+    // settles into a single rebuild instead of one per event.
+    let pending_refresh: Arc<Mutex<Option<tauri::async_runtime::JoinHandle<()>>>> =
+        Arc::new(Mutex::new(None));
+    let app_handle = app.clone();
+    app.listen("docker:event", move |_event| {
+        let app_handle = app_handle.clone();
+        let mut pending = pending_refresh.lock().unwrap();
+        if let Some(handle) = pending.take() {
+            handle.abort();
+        }
+        *pending = Some(tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(DOCKER_EVENT_DEBOUNCE).await;
+            apply_style(&app_handle);
+        }));
+    });
+
     Ok(())
 }
 
-/// Builds a fresh popup window, positions it just above the tray icon, and shows it.
-/// `move_window_constrained` (tauri-plugin-positioner) resolves that against whichever
-/// monitor the tray icon is actually on and clamps it to that monitor's bounds, so this
-/// doesn't need its own multi-monitor/taskbar-position handling.
-///
-/// `show()` has no fade of its own — tried driving one through Win32's `AnimateWindow`
-/// instead, but `AW_BLEND` bypasses DWM composition and paints with the pre-Vista GDI
-/// blend path, which looked glaringly out of place applied to a `transparent: true` window
-/// on Windows 11 (a solid, low-color-depth flash rather than a smooth fade). Plain `show()`
-/// it stays; `src/routes/tray-menu/+page.svelte` plays a CSS fade of its own instead.
-///
-/// If a window with this label somehow still exists (`WebviewWindow::close()` posts to the
-/// event loop rather than closing synchronously, so a stale one right after a close is
-/// possible in principle), this closes it and returns instead of also trying to `build()`
-/// a second window under the same label, which would just fail — closing it is also the
-/// right call behaviorally, since it means the user's click reached here before the
-/// previous popup finished tearing down and reads the same as clicking to toggle it shut.
-fn show_tray_menu(app: &AppHandle, last_close_at: &Arc<Mutex<Option<Instant>>>) {
-    if app.get_webview_window(TRAY_MENU_LABEL).is_some() {
-        close_tray_menu(app);
-        return;
-    }
-
-    let Some(window_config) = app
-        .config()
-        .app
-        .windows
-        .iter()
-        .find(|w| w.label == TRAY_MENU_LABEL)
-        .cloned()
-    else {
+/// Applies the current `tray_style` to the tray icon: a live menu (rebuilt from the
+/// current container list) for native, or none at all for flyout — see `build_tray`'s doc
+/// comment for why clearing the menu is what lets the flyout's own click handling run.
+/// Called once at startup, again whenever the container list might have changed
+/// (`docker:event`), once more right after connecting (`setup_connect`, before any
+/// `docker:event` has had a chance to fire), and whenever the user flips the Settings
+/// toggle (`tray_apply_style`). A no-op if the tray hasn't been built yet.
+pub fn apply_style(app: &AppHandle) {
+    let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
     };
-    let Ok(window) = WebviewWindowBuilder::from_config(app, &window_config).and_then(|b| b.build())
-    else {
-        return;
-    };
-
-    let _ = window.set_always_on_top(true);
-    let _ = window.move_window_constrained(Position::TrayCenter);
-    let _ = window.show();
-    let _ = window.set_focus();
-
-    // Registered here (rather than reused across opens) since this window itself is
-    // rebuilt on every open — recording into `last_close_at` is what lets `build_tray`'s
-    // click handlers tell "the user clicked the tray icon to close this" apart from "open
-    // a new one" (see its own doc comment).
-    window.on_window_event({
-        let app = app.clone();
-        let last_close_at = last_close_at.clone();
-        move |event| {
-            if let WindowEvent::Focused(false) = event {
-                *last_close_at.lock().unwrap() = Some(Instant::now());
-                close_tray_menu(&app);
+    let generation = MENU_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+    match tray_style(app) {
+        TrayStyle::Native => {
+            // Attached synchronously first so a right-click landing before the async
+            // rebuild below resolves — a real gap only at startup, since every later call
+            // has an already-attached menu to leave in place until this one's ready —
+            // still shows something instead of nothing.
+            if let Ok(menu) = native::base_menu(app) {
+                let _ = tray.set_menu(Some(menu));
             }
+            let app = app.clone();
+            let tray = tray.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Ok(menu) = native::build_menu(&app).await {
+                    // Discard this result if a newer `apply_style` call (a later
+                    // `docker:event`, or a switch to `Flyout`) has already landed.
+                    if MENU_GENERATION.load(Ordering::SeqCst) == generation {
+                        let _ = tray.set_menu(Some(menu));
+                    }
+                }
+            });
         }
-    });
+        TrayStyle::Flyout => {
+            let _ = tray.set_menu(None::<Menu<tauri::Wry>>);
+        }
+    }
+}
+
+/// Re-applies the current `tray_style` — called from Settings when the user flips the
+/// flyout toggle, so the change takes effect on the very next click rather than needing an
+/// app restart.
+#[tauri::command]
+pub fn tray_apply_style(app: AppHandle) {
+    apply_style(&app);
 }
