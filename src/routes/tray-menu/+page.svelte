@@ -62,7 +62,7 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div class="item container-item" onclick={() => selectContainer(c.id)}>
-            <span class="dot"></span>
+            <span class="dot dockl-status-dot running"></span>
             <span class="container-name">{c.names.join(", ")}</span>
           </div>
         {/each}
@@ -140,21 +140,18 @@
     background: var(--dockl-menu-hover);
   }
 
-  /* This popup only ever lists running containers (see `refresh`'s filter), so the dot
-     is a fixed color rather than the running/restarting split ContainerMasterList's own
-     dot has. */
   .container-item {
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
+  /* This popup only ever lists running containers (see `refresh`'s filter), so `running`
+     is hardcoded in the markup rather than bound to state — sized down from
+     .dockl-status-dot's default 8px to fit this compact list (see theme.css). */
   .dot {
-    flex-shrink: 0;
     width: 7px;
     height: 7px;
-    border-radius: 50%;
-    background: var(--dockl-success);
   }
 
   .container-name {

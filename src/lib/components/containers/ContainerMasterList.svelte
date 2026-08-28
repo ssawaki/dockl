@@ -374,8 +374,10 @@
     data-roving-item
     tabindex="-1"
   >
+    <!-- This row carries no status text, so the dot (restarting usually means a container
+         is failing its way around a `restart:` policy) is the only thing that says so. -->
     <span
-      class="dot"
+      class="dockl-status-dot"
       class:running={c.state === "running"}
       class:restarting={c.state === "restarting"}
     ></span>
@@ -636,24 +638,6 @@
 
   .chevron.open {
     transform: rotate(90deg);
-  }
-
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--dockl-text-secondary);
-    flex-shrink: 0;
-  }
-
-  .dot.running {
-    background: var(--dockl-success);
-  }
-
-  /* Restarting usually means a container is failing its way around a `restart:` policy.
-     This row carries no status text, so the dot is the only thing that can say so. */
-  .dot.restarting {
-    background: var(--dockl-warning);
   }
 
   .compose-icon {

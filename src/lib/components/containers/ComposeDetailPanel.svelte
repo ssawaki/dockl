@@ -154,7 +154,7 @@
               <td>{c.image}</td>
               <td>
                 <span
-                  class="row-dot"
+                  class="row-dot dockl-status-dot"
                   class:running={c.state === "running"}
                   class:restarting={c.state === "restarting"}
                 ></span>
@@ -300,21 +300,12 @@
     background: var(--dockl-surface-hover);
   }
 
+  /* Sized down from .dockl-status-dot's default 8px to fit this denser row; color/shape
+     come from that shared class (see theme.css) via the second class on the element. */
   .row-dot {
     display: inline-block;
     width: 7px;
     height: 7px;
-    border-radius: 50%;
-    background: var(--dockl-text-secondary);
     margin-right: 4px;
-  }
-
-  .row-dot.running {
-    background: var(--dockl-success);
-  }
-
-  /* Matches ContainerMasterList's dot. */
-  .row-dot.restarting {
-    background: var(--dockl-warning);
   }
 </style>

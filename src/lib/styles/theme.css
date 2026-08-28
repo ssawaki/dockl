@@ -221,6 +221,28 @@ textarea {
   border-radius: var(--dockl-radius);
 }
 
+/* The running/restarting/stopped traffic-light dot next to a container's name. Global
+   for the same reason as .detail-title below: ContainerMasterList, ComposeDetailPanel,
+   and the tray popup each used to style their own copy, and had already drifted (7px vs
+   8px) before this existed. Call sites still own their own size/spacing via a second,
+   locally-scoped class — Svelte's per-component scoping makes that win the cascade
+   regardless of source order. */
+.dockl-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dockl-text-secondary);
+  flex-shrink: 0;
+}
+
+.dockl-status-dot.running {
+  background: var(--dockl-success);
+}
+
+.dockl-status-dot.restarting {
+  background: var(--dockl-warning);
+}
+
 /* Headings inside a DetailPanel. Global rather than per-panel because every resource's
    detail pane uses them and they must not drift apart — each one styling its own <h2>
    is how four panels end up with four slightly different title sizes. */
