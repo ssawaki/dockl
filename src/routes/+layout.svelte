@@ -19,6 +19,7 @@
   import { connection } from "$lib/stores/connection";
   import { pendingTraySelection } from "$lib/stores/trayContainerSelection";
   import { initI18n, t } from "$lib/stores/i18n";
+  import CopyableText from "$lib/components/ui/CopyableText.svelte";
 
   // The tray's own popup window (`tray-menu` in `tauri.conf.json`) loads this same
   // SvelteKit build as a small borderless overlay, always on this one route — a plain
@@ -29,7 +30,7 @@
   // lookups — and it has no `store:default` permission to load the settings store
   // `initI18n` reads from, see `capabilities/tray-menu.json`), and the Fluent Web
   // Components custom-element registrations, which are real work this window — rebuilt
-  // from scratch on every open, see `tray::show_tray_menu` on the Rust side — would
+  // from scratch on every open, see `tray::flyout::show` on the Rust side — would
   // otherwise redo on every click for markup it never renders.
   const isTrayMenu = get(page).url.pathname === "/tray-menu";
 
@@ -198,7 +199,9 @@
         {:else if $connection.status === "failed" && !ALWAYS_AVAILABLE.has($page.url.pathname)}
           <div class="connect-failed">
             <p class="failed-title">{$t("app.connectFailed")}</p>
-            <p class="failed-detail">{$connection.error}</p>
+            <div class="failed-detail">
+              <CopyableText value={$connection.error ?? ""} />
+            </div>
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <fluent-button appearance="accent" onclick={() => connect({ startIfStopped: true })}

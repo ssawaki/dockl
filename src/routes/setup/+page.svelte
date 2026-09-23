@@ -6,6 +6,7 @@
   import { setupListDistros, setupConnect } from "$lib/ipc/setup";
   import { persistConnectedDistro } from "$lib/connection";
   import { connection } from "$lib/stores/connection";
+  import CopyableText from "$lib/components/ui/CopyableText.svelte";
   import LoadingState from "$lib/components/ui/LoadingState.svelte";
   import { rovingFocus } from "$lib/actions/rovingFocus";
   import { t } from "$lib/stores/i18n";
@@ -55,7 +56,9 @@
   <p class="lead">{$t("setup.lead")}</p>
 
   {#if errorMessage}
-    <div class="error-banner dockl-surface">{errorMessage}</div>
+    <div class="error-banner dockl-surface">
+      <CopyableText value={errorMessage} />
+    </div>
   {/if}
 
   {#if loading}

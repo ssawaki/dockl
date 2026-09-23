@@ -66,6 +66,10 @@
   );
 
   function selectContainerFromProject(id: string) {
+    // The tray's container list is rebuilt async/debounced, so an id it hands back can be
+    // stale by the time this fires (e.g. the container stopped in between) — same check
+    // `refresh()` already does for `selectedId`.
+    if (!containers.some((c) => c.id === id)) return;
     selectedProject = null;
     selectedId = id;
   }

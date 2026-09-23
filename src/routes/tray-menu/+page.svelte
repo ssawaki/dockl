@@ -19,7 +19,7 @@
     }
   }
 
-  // This popup window is rebuilt fresh on every open (see `tray::show_tray_menu` — closed
+  // This popup window is rebuilt fresh on every open (see `tray::flyout::show` — closed
   // outright rather than kept alive hidden, so the running list can't go stale), so a
   // plain fetch on mount always reflects the current list without needing to listen for
   // anything. It's also what makes `.popup`'s CSS animation below replay on every open.

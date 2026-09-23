@@ -19,7 +19,7 @@
 pub mod flyout;
 mod native;
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -45,6 +45,14 @@ const DOCKER_EVENT_DEBOUNCE: Duration = Duration::from_millis(400);
 /// first — without this, a slow call finishing after a newer one (or after the user's
 /// switched to `Flyout`) can re-attach a stale menu on top of a newer or absent one.
 static MENU_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// Whether a native menu is currently attached to the tray — `apply_style`'s `Native`
+/// branch only needs to attach its empty placeholder while this is false (startup, or
+/// right after switching from `Flyout`, which clears the menu). Without it, every later
+/// call — a debounced `docker:event`, a Settings toggle back to `Native` — would replace
+/// the already-correct menu with the empty placeholder before the async rebuild resolves,
+/// flashing the menu empty for no reason.
+static MENU_ATTACHED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum TrayStyle {
@@ -167,12 +175,14 @@ pub fn apply_style(app: &AppHandle) {
     let generation = MENU_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
     match tray_style(app) {
         TrayStyle::Native => {
-            // Attached synchronously first so a right-click landing before the async
-            // rebuild below resolves — a real gap only at startup, since every later call
-            // has an already-attached menu to leave in place until this one's ready —
-            // still shows something instead of nothing.
-            if let Ok(menu) = native::base_menu(app) {
-                let _ = tray.set_menu(Some(menu));
+            // Attached synchronously first, but only while no menu is attached yet — see
+            // `MENU_ATTACHED`. This covers the real gap (a right-click landing before the
+            // async rebuild below has ever resolved) without clobbering an already-correct
+            // menu on every later call.
+            if !MENU_ATTACHED.swap(true, Ordering::SeqCst) {
+                if let Ok(menu) = native::base_menu(app) {
+                    let _ = tray.set_menu(Some(menu));
+                }
             }
             let app = app.clone();
             let tray = tray.clone();
@@ -187,6 +197,7 @@ pub fn apply_style(app: &AppHandle) {
             });
         }
         TrayStyle::Flyout => {
+            MENU_ATTACHED.store(false, Ordering::SeqCst);
             let _ = tray.set_menu(None::<Menu<tauri::Wry>>);
         }
     }
