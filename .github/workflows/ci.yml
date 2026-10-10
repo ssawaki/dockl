@@ -4,12 +4,17 @@
 #
 # windows-latest because the app is Windows-only: src-tauri has a `cfg(windows)`
 # dependency on the `windows` crate and won't check on a Linux runner.
+#
+# Markdown and docs/ are skipped: nothing here reads them except `prettier --check`, and
+# lefthook already runs that over staged files at commit time.
 name: CI
 
 on:
   push:
     branches: [main]
+    paths-ignore: ["**.md", "docs/**"]
   pull_request:
+    paths-ignore: ["**.md", "docs/**"]
 
 jobs:
   check:
