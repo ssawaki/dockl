@@ -280,6 +280,19 @@ export const jaEn: Record<MessageKey, string> = {
   "settings.autostart.heading": "自動起動",
   "settings.autostart.toggle": "Windowsサインイン時にDocklを自動起動する",
 
+  "settings.update.heading": "アップデート",
+  "settings.update.checkButton": "アップデートを確認",
+  "settings.update.checking": "確認中...",
+  "settings.update.upToDate": "最新バージョンです。",
+  "settings.update.available": "新しいバージョン {version} が利用可能です。",
+  "settings.update.availableToast":
+    "新しいバージョン {version} が利用可能です。設定から更新できます。",
+  "settings.update.downloadButton": "ダウンロードしてインストール",
+  "settings.update.downloading": "ダウンロード・インストール中...",
+  "settings.update.checkFailed": "アップデートの確認に失敗しました: {error}",
+  "settings.update.releaseNotFound": "アップデート情報が見つかりませんでした。",
+  "settings.update.installFailed": "アップデートに失敗しました: {error}",
+
   "setup.welcome": "ようこそ",
   "setup.lead": "Dockerを実行しているWSL2ディストロを選択してください。",
   "setup.detecting": "WSLディストロを検出中...",

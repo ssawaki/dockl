@@ -58,6 +58,7 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons-dev/32x32.png",
       "icons-dev/128x128.png",
@@ -69,6 +70,12 @@
       "nsis": {
         "installMode": "currentUser"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJFMzRFNTE1NzlFQTAyNTkKUldSWkF1cDVGZVUwdm9EdTNSeU9IT0lSa1NZdWYzTWt4ZU9JaVBsRndKTlA1N2dFMjN6RmgzMHMK",
+      "endpoints": ["https://github.com/ssawaki/dockl/releases/latest/download/latest.json"]
     }
   }
 }

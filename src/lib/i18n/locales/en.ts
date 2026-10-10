@@ -300,6 +300,18 @@ export const en = {
   "settings.autostart.heading": "Startup",
   "settings.autostart.toggle": "Launch Dockl automatically when you sign in to Windows",
 
+  "settings.update.heading": "Updates",
+  "settings.update.checkButton": "Check for updates",
+  "settings.update.checking": "Checking...",
+  "settings.update.upToDate": "You're on the latest version.",
+  "settings.update.available": "Version {version} is available.",
+  "settings.update.availableToast": "Version {version} is available. Update it from Settings.",
+  "settings.update.downloadButton": "Download and install",
+  "settings.update.downloading": "Downloading and installing...",
+  "settings.update.checkFailed": "Couldn't check for updates: {error}",
+  "settings.update.releaseNotFound": "No update information was found.",
+  "settings.update.installFailed": "Update failed: {error}",
+
   "setup.welcome": "Welcome",
   "setup.lead": "Select the WSL2 distro running Docker.",
   "setup.detecting": "Detecting WSL distros...",

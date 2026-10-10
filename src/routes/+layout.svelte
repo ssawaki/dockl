@@ -20,6 +20,8 @@
   import { pendingTraySelection } from "$lib/stores/trayContainerSelection";
   import { initI18n, t } from "$lib/stores/i18n";
   import CopyableText from "$lib/components/ui/CopyableText.svelte";
+  import { checkForUpdate } from "$lib/update";
+  import { showToast } from "$lib/stores/toasts";
 
   // The tray's own popup window (`tray-menu` in `tauri.conf.json`) loads this same
   // SvelteKit build as a small borderless overlay, always on this one route — a plain
@@ -72,6 +74,13 @@
   onMount(() => {
     if (isTrayMenu) return;
     void connect();
+
+    // Once per launch, quietly. Never auto-downloads — Settings is where the user
+    // actually triggers the download/install/relaunch (see `$lib/update.ts`).
+    void checkForUpdate({ silent: true }).then((update) => {
+      if (update)
+        showToast("info", $t("settings.update.availableToast", { version: update.version }));
+    });
 
     // Two things the app can't notice on its own, since nothing polls WSL any more:
     //

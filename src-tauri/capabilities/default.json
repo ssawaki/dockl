@@ -12,6 +12,8 @@
     "opener:default",
     "notification:default",
     "store:default",
-    "autostart:default"
+    "autostart:default",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

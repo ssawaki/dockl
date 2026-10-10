@@ -2,8 +2,11 @@
 # something nobody wants for a branch push. `npm version <patch|minor|major>` makes the
 # matching tag; `git push --follow-tags` fires this.
 #
-# The Release is left as a draft: the NSIS installer is unsigned, so publishing is a
-# deliberate act, not a side effect of tagging.
+# The Release is left as a draft: the NSIS installer is unsigned (Authenticode-wise — the
+# `.sig` file below is tauri-plugin-updater's own unrelated Ed25519 signature), so
+# publishing is a deliberate act, not a side effect of tagging. That draft gate doubles as
+# the in-app updater's rollout gate: `releases/latest/download/latest.json` 404s until a
+# human publishes.
 name: Release
 
 on:
@@ -26,14 +29,38 @@ jobs:
           workspaces: src-tauri
       - run: npm ci
       - run: npm run installer
+        env:
+          # Signs the updater artifact (`createUpdaterArtifacts` in tauri.conf.json), not
+          # the exe itself — see the draft-gate comment above.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      # Two assets: the NSIS installer, and the bare exe for people who don't want one.
-      # The exe is renamed to match the installer's naming — cargo names it after the
-      # crate (dockl.exe), which says nothing about the version.
+      # Assets: the NSIS installer and its updater `.sig`, the bare exe for people who
+      # don't want an installer (renamed to carry the version — cargo names it after the
+      # crate, dockl.exe, which says nothing about that), and latest.json — the manifest
+      # tauri-plugin-updater polls, hand-built here since this workflow doesn't use
+      # tauri-action.
       - run: |
           $version = $env:GITHUB_REF_NAME -replace '^v', ''
           Copy-Item src-tauri/target/release/dockl.exe "Dockl_${version}_x64.exe"
+
+          $setup = Get-Item src-tauri/target/release/bundle/nsis/*-setup.exe
+          $sig = Get-Item src-tauri/target/release/bundle/nsis/*-setup.exe.sig
+          $signature = (Get-Content $sig -Raw).Trim()
+
+          @{
+            version   = $version
+            notes     = ""
+            pub_date  = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                url       = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:GITHUB_REF_NAME/$($setup.Name)"
+                signature = $signature
+              }
+            }
+          } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8NoBOM latest.json
+
           gh release create $env:GITHUB_REF_NAME --draft --title $env:GITHUB_REF_NAME --generate-notes `
-            (Get-Item src-tauri/target/release/bundle/nsis/*-setup.exe) "Dockl_${version}_x64.exe"
+            $setup $sig "Dockl_${version}_x64.exe" latest.json
         env:
           GH_TOKEN: ${{ github.token }}

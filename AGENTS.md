@@ -54,7 +54,25 @@ git push --follow-tags     # a plain `git push` leaves the tag behind
 The tag is what fires `.github/workflows/release.yml`; nothing else builds an installer.
 It attaches both the NSIS installer and the bare exe (renamed to carry the version) to a
 **draft** Release, so publishing stays a deliberate act — the bundle is unsigned, and a
-draft's assets aren't reachable until someone presses the button.
+draft's assets aren't reachable until someone presses the button. That same gate is what
+the in-app updater (`tauri-plugin-updater`) relies on: it polls
+`releases/latest/download/latest.json`, which the workflow generates and uploads alongside
+a `.sig` file (a separate Ed25519 signature, unrelated to code-signing), but which 404s
+until the draft is published. Signing needs `TAURI_SIGNING_PRIVATE_KEY` /
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` as repo secrets — lose that key and existing installs
+can no longer verify (and therefore install) any future update.
+
+The same two variables are needed by a local `npm run installer`: `createUpdaterArtifacts`
+makes the build fail at the signing step without them, after the installer itself is
+already built. `TAURI_SIGNING_PRIVATE_KEY` takes the key's contents, not a path
+(`..._PATH` is only for `tauri signer sign`). Under `tauri dev` the update check does
+nothing, because its endpoint serves the production installer; `VITE_UPDATE_CHECK=1` turns
+it back on for looking at the Settings UI.
+
+**winget is not automated.** After publishing the draft, a manifest PR to
+`microsoft/winget-pkgs` for `Dockl.Dockl` is still a manual step, e.g.
+`wingetcreate update Dockl.Dockl --version <v> --urls <setup.exe url> --submit`. Skipping it
+doesn't break the in-app updater, but winget users stay on the old version.
 
 `.github/workflows/ci.yml` runs the two type checks lefthook leaves out, on every push and
 PR. It builds the frontend first because `cargo check` needs `frontendDist` to exist, and

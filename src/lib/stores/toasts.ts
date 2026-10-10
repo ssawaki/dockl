@@ -1,6 +1,6 @@
 import { writable } from "svelte/store";
 
-export type ToastStatus = "loading" | "success" | "error";
+export type ToastStatus = "loading" | "success" | "error" | "info";
 
 export interface Toast {
   id: string;
@@ -112,9 +112,11 @@ export function dismissToast(id: string) {
 }
 
 /** For instant, synchronous actions (e.g. copy) that don't need a "loading" phase. */
-export function showToast(status: "success" | "error", message: string): string {
+export function showToast(status: "success" | "error" | "info", message: string): string {
   const id = `toast-${++counter}`;
-  const delay = status === "success" ? 2000 : 6000;
+  // info lingers longer than success: it's not tied to something the user just did, so
+  // they may not be looking at the screen when it appears.
+  const delay = status === "success" ? 2000 : status === "info" ? 10000 : 6000;
   addToast({ id, status, message, duration: delay });
   scheduleDismiss(id, delay);
   return id;

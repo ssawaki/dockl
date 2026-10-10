@@ -25,6 +25,7 @@
   import { appName } from "$lib/branding";
   import { buildInfo } from "$lib/buildInfo";
   import CopyIconButton from "$lib/components/ui/CopyIconButton.svelte";
+  import CopyableText from "$lib/components/ui/CopyableText.svelte";
   import { connection } from "$lib/stores/connection";
   import {
     themeMode,
@@ -39,6 +40,7 @@
   import PageHeader from "$lib/components/layout/PageHeader.svelte";
   import TcpEndpointDialog from "$lib/components/settings/TcpEndpointDialog.svelte";
   import { t, locale, setLocale, type Locale } from "$lib/stores/i18n";
+  import { checkForUpdate, installUpdate, updateState } from "$lib/update";
 
   let store: Store | null = null;
   let trayEnabled = $state(false);
@@ -334,6 +336,64 @@
         >{$t("settings.connection.setupButton")}</fluent-button
       >
     </div>
+  </section>
+
+  <section class="dockl-surface">
+    <h2>{$t("settings.update.heading")}</h2>
+    <div class="row">
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <fluent-button
+        appearance="outline"
+        disabled={$updateState.status === "checking" || $updateState.status === "downloading"}
+        onclick={() => checkForUpdate()}
+      >
+        <span class="btn-content">
+          {#if $updateState.status === "checking"}
+            <fluent-spinner size="tiny"></fluent-spinner>
+          {/if}
+          {$t("settings.update.checkButton")}
+        </span>
+      </fluent-button>
+      {#if $updateState.status === "upToDate"}
+        <span class="label">{$t("settings.update.upToDate")}</span>
+      {/if}
+    </div>
+
+    {#if $updateState.status === "error"}
+      {@const error = $updateState.error ?? ""}
+      <!-- tauri-plugin-updater's `ReleaseNotFound`, which reaches us only as text. If its
+           wording ever changes this falls through to the generic message, never a wrong one. -->
+      <CopyableText
+        value={error.includes("Could not fetch a valid release JSON")
+          ? `${$t("settings.update.releaseNotFound")}\n${error}`
+          : $t("settings.update.checkFailed", { error })}
+      />
+    {/if}
+
+    {#if $updateState.update}
+      <div class="row">
+        <span class="label"
+          >{$t("settings.update.available", { version: $updateState.update.version })}</span
+        >
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <fluent-button
+          appearance="accent"
+          disabled={$updateState.status === "downloading"}
+          onclick={() => $updateState.update && installUpdate($updateState.update)}
+        >
+          <span class="btn-content">
+            {#if $updateState.status === "downloading"}
+              <fluent-spinner size="tiny"></fluent-spinner>
+            {/if}
+            {$updateState.status === "downloading"
+              ? $t("settings.update.downloading")
+              : $t("settings.update.downloadButton")}
+          </span>
+        </fluent-button>
+      </div>
+    {/if}
   </section>
 
   {#await buildInfo() then build}

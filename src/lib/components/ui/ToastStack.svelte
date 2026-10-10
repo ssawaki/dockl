@@ -9,6 +9,7 @@
   import ToastOutputDialog from "$lib/components/ui/ToastOutputDialog.svelte";
   import checkmarkIcon from "@fluentui/svg-icons/icons/checkmark_circle_20_filled.svg?raw";
   import errorIcon from "@fluentui/svg-icons/icons/error_circle_20_filled.svg?raw";
+  import infoIcon from "@fluentui/svg-icons/icons/info_20_filled.svg?raw";
   import dismissIcon from "@fluentui/svg-icons/icons/dismiss_20_regular.svg?raw";
 
   let openOutputToastId = $state<string | null>(null);
@@ -33,6 +34,8 @@
             <fluent-spinner size="tiny"></fluent-spinner>
           {:else if toast.status === "success"}
             <Icon svg={checkmarkIcon} size={18} />
+          {:else if toast.status === "info"}
+            <Icon svg={infoIcon} size={18} />
           {:else}
             <Icon svg={errorIcon} size={18} />
           {/if}
@@ -153,6 +156,10 @@
 
   .toast-error .toast-icon {
     color: var(--dockl-danger-text);
+  }
+
+  .toast-info .toast-icon {
+    color: var(--dockl-accent);
   }
 
   .toast-btn {
