@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "app": "tauri dev",
+    "app": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "installer": "tauri build --config src-tauri/tauri.release.conf.json",
     "build": "node scripts/build-without-dev-routes.mjs",
     "preview": "vite preview",

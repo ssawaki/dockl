@@ -10,6 +10,7 @@ export const jaEn: Record<MessageKey, string> = {
   "nav.networks": "ネットワーク",
   "nav.storage": "ストレージ",
   "nav.settings": "設定",
+  "nav.update": "{version} に更新",
 
   "app.connecting": "WSL2に接続中...",
   "app.starting": "WSL2を起動中...",
@@ -286,12 +287,15 @@ export const jaEn: Record<MessageKey, string> = {
   "settings.update.upToDate": "最新バージョンです。",
   "settings.update.available": "新しいバージョン {version} が利用可能です。",
   "settings.update.availableToast":
-    "新しいバージョン {version} が利用可能です。設定から更新できます。",
+    "新しいバージョン {version} が利用可能です。サイドバーから更新できます。",
   "settings.update.downloadButton": "ダウンロードしてインストール",
   "settings.update.downloading": "ダウンロード・インストール中...",
-  "settings.update.checkFailed": "アップデートの確認に失敗しました: {error}",
+  "settings.update.checkFailed": "アップデートの確認に失敗しました。",
   "settings.update.releaseNotFound": "アップデート情報が見つかりませんでした。",
-  "settings.update.installFailed": "アップデートに失敗しました: {error}",
+  "settings.update.signatureFailed": "更新ファイルの署名検証に失敗したため、更新を中止しました。",
+  "settings.update.platformNotFound": "この環境向けのアップデートが見つかりませんでした。",
+  "settings.update.connectFailed": "サーバーに接続できませんでした。",
+  "settings.update.installFailed": "アップデートに失敗しました。",
 
   "setup.welcome": "ようこそ",
   "setup.lead": "Dockerを実行しているWSL2ディストロを選択してください。",

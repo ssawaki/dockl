@@ -1,8 +1,9 @@
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { writable, get } from "svelte/store";
-import { t } from "$lib/stores/i18n";
-import { showToast } from "$lib/stores/toasts";
+import { t, type MessageKey } from "$lib/stores/i18n";
+import { pushToast, resolveToast } from "$lib/stores/toasts";
+import { devCheckOptions } from "$lib/update.dev";
 
 export type UpdateStatus = "idle" | "checking" | "upToDate" | "available" | "downloading" | "error";
 
@@ -15,22 +16,33 @@ interface UpdateState {
 export const updateState = writable<UpdateState>({ status: "idle", update: null });
 
 /**
+ * tauri-plugin-updater's errors reach us only as English text, so these match on that text.
+ * A wording change in the plugin stops one of these matching and nothing worse: the caller's
+ * fallback is shown instead, with the original text still alongside it.
+ */
+const KNOWN_ERRORS: [RegExp, MessageKey][] = [
+  [/Could not fetch a valid release JSON/, "settings.update.releaseNotFound"],
+  [/^The signature |minisign data/, "settings.update.signatureFailed"],
+  [/in the response `platforms`|fallback platforms/, "settings.update.platformNotFound"],
+  [/error sending request|dns error|timed out/, "settings.update.connectFailed"],
+];
+
+export function updateErrorKey(raw: string, fallback: MessageKey): MessageKey {
+  return KNOWN_ERRORS.find(([pattern]) => pattern.test(raw))?.[1] ?? fallback;
+}
+
+/**
  * Checks for a new version without downloading anything. `silent` is for the once-per-launch
  * background check (see `+layout.svelte`): a failure there (e.g. no network yet at cold boot)
  * resets to idle instead of surfacing as an "error" state the Settings page would otherwise
  * show the next time it's opened, for a check the user never asked for.
- *
- * Does nothing under `tauri dev`: the endpoint is the production `latest.json`, so a dev build
- * would be offered — and would install — the production installer, a different product.
- * `VITE_UPDATE_CHECK=1` opts back in, for looking at the Settings UI.
  */
 export async function checkForUpdate({
   silent = false,
 }: { silent?: boolean } = {}): Promise<Update | null> {
-  if (import.meta.env.DEV && !import.meta.env.VITE_UPDATE_CHECK) return null;
   updateState.set({ status: "checking", update: null });
   try {
-    const update = await check();
+    const update = await check(import.meta.env.DEV ? devCheckOptions() : undefined);
     updateState.set(
       update ? { status: "available", update } : { status: "upToDate", update: null },
     );
@@ -57,6 +69,10 @@ export async function installUpdate(update: Update): Promise<void> {
     await relaunch();
   } catch (e) {
     updateState.update((s) => ({ ...s, status: "available" }));
-    showToast("error", get(t)("settings.update.installFailed", { error: String(e) }));
+    const raw = String(e);
+    // A loading toast resolved in the same tick, because that is the only way to attach
+    // `output` — which is what makes the original text readable and copyable from the toast.
+    const id = pushToast("");
+    resolveToast(id, "error", get(t)(updateErrorKey(raw, "settings.update.installFailed")), raw);
   }
 }

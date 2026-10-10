@@ -7,7 +7,7 @@ A Windows 11 desktop GUI for a Docker daemon running inside WSL2. Tauri v2 (Rust
 ## Commands
 
 ```bash
-npm run app          # run the dev build (same as npm run tauri dev)
+npm run app          # run the dev build (`tauri dev` plus tauri.dev.conf.json)
 npm run installer    # build the production installer
 npm run check:all    # svelte-check and cargo check, in parallel
 npm run lint         # prettier --check and eslint
@@ -65,9 +65,12 @@ can no longer verify (and therefore install) any future update.
 The same two variables are needed by a local `npm run installer`: `createUpdaterArtifacts`
 makes the build fail at the signing step without them, after the installer itself is
 already built. `TAURI_SIGNING_PRIVATE_KEY` takes the key's contents, not a path
-(`..._PATH` is only for `tauri signer sign`). Under `tauri dev` the update check does
-nothing, because its endpoint serves the production installer; `VITE_UPDATE_CHECK=1` turns
-it back on for looking at the Settings UI.
+(`..._PATH` is only for `tauri signer sign`).
+
+`npm run app` doesn't touch the real endpoint: `tauri.dev.conf.json` points the updater at
+`routes/dev-update`, a dev route that answers by header, and the Settings page picks which
+response the next check gets. The override lives in that dev-only file rather than the other
+way round so that forgetting it fails safe — a bare `tauri dev` just checks GitHub.
 
 **winget is not automated.** After publishing the draft, a manifest PR to
 `microsoft/winget-pkgs` for `Dockl.Dockl` is still a manual step, e.g.

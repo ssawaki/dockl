@@ -18,6 +18,8 @@
   import storageIconFilled from "@fluentui/svg-icons/icons/storage_20_filled.svg?raw";
   import settingsIcon from "@fluentui/svg-icons/icons/settings_20_regular.svg?raw";
   import settingsIconFilled from "@fluentui/svg-icons/icons/settings_20_filled.svg?raw";
+  import downloadIcon from "@fluentui/svg-icons/icons/arrow_download_20_regular.svg?raw";
+  import { installUpdate, updateState } from "$lib/update";
   import beakerIcon from "@fluentui/svg-icons/icons/beaker_20_regular.svg?raw";
   import beakerIconFilled from "@fluentui/svg-icons/icons/beaker_20_filled.svg?raw";
 
@@ -167,6 +169,35 @@
     {#if import.meta.env.DEV && !$page.url.pathname.startsWith("/dev-")}
       {@render navItem(devDesignItem)}
     {/if}
+    {#if $updateState.update}
+      {@const update = $updateState.update}
+      {@const label = $t("nav.update", { version: update.version })}
+      {@const busy = $updateState.status === "downloading"}
+      <!-- A button, not a link: it installs rather than navigates. `aria-disabled` instead of
+           `disabled` so that it stays a roving-focus stop while the download runs. -->
+      <button
+        type="button"
+        class="sidebar-item update"
+        aria-disabled={busy}
+        data-roving-item
+        onclick={() => busy || void installUpdate(update)}
+        onpointerenter={(e) => openTip(e.currentTarget, label)}
+        onpointerleave={closeTip}
+        onpointerdown={closeTip}
+        onfocusin={(e) =>
+          e.currentTarget.matches(":focus-visible") && openTip(e.currentTarget, label)}
+        onfocusout={closeTip}
+      >
+        <span class="sidebar-item-icon">
+          {#if busy}
+            <fluent-spinner size="tiny"></fluent-spinner>
+          {:else}
+            <Icon svg={downloadIcon} size={19} />
+          {/if}
+        </span>
+        <span class="sidebar-item-label">{label}</span>
+      </button>
+    {/if}
     {@render navItem(settingsItem)}
   </nav>
 </div>
@@ -265,6 +296,27 @@
   .sidebar-item.active {
     background: var(--dockl-surface);
     color: var(--dockl-accent);
+  }
+
+  /* The only `<button>` among the items; strip its UA chrome so it lines up with the links. */
+  button.sidebar-item {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+  }
+
+  button.sidebar-item:hover {
+    background: var(--dockl-surface-hover);
+  }
+
+  .sidebar-item.update {
+    color: var(--dockl-accent);
+  }
+
+  .sidebar-item.update[aria-disabled="true"] {
+    opacity: 0.7;
   }
 
   .sidebar-item-icon {

@@ -40,7 +40,8 @@
   import PageHeader from "$lib/components/layout/PageHeader.svelte";
   import TcpEndpointDialog from "$lib/components/settings/TcpEndpointDialog.svelte";
   import { t, locale, setLocale, type Locale } from "$lib/stores/i18n";
-  import { checkForUpdate, installUpdate, updateState } from "$lib/update";
+  import { checkForUpdate, installUpdate, updateErrorKey, updateState } from "$lib/update";
+  import { devCases, getDevCase, setDevCase, type DevCase } from "$lib/update.dev";
 
   let store: Store | null = null;
   let trayEnabled = $state(false);
@@ -362,12 +363,8 @@
 
     {#if $updateState.status === "error"}
       {@const error = $updateState.error ?? ""}
-      <!-- tauri-plugin-updater's `ReleaseNotFound`, which reaches us only as text. If its
-           wording ever changes this falls through to the generic message, never a wrong one. -->
       <CopyableText
-        value={error.includes("Could not fetch a valid release JSON")
-          ? `${$t("settings.update.releaseNotFound")}\n${error}`
-          : $t("settings.update.checkFailed", { error })}
+        value={`${$t(updateErrorKey(error, "settings.update.checkFailed"))}\n${error}`}
       />
     {/if}
 
@@ -392,6 +389,24 @@
               : $t("settings.update.downloadButton")}
           </span>
         </fluent-button>
+      </div>
+    {/if}
+
+    {#if import.meta.env.DEV}
+      <div class="row dev-only">
+        <span class="dev-tag">DEV ONLY</span>
+        <span class="label">次の確認が受け取る応答:</span>
+        <fluent-dropdown
+          style="min-width: 200px"
+          onchange={(e: Event) =>
+            setDevCase((e.target as HTMLElement & { value: string }).value as DevCase)}
+        >
+          <fluent-listbox>
+            {#each devCases as c (c.id)}
+              <fluent-option value={c.id} selected={c.id === getDevCase()}>{c.label}</fluent-option>
+            {/each}
+          </fluent-listbox>
+        </fluent-dropdown>
       </div>
     {/if}
   </section>
@@ -549,5 +564,20 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .dev-only {
+    margin-top: 4px;
+    padding: 8px 10px;
+    border: 1px dashed var(--dockl-warning);
+    border-radius: var(--dockl-radius);
+  }
+
+  .dev-tag {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--dockl-warning);
   }
 </style>

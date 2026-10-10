@@ -71,7 +71,7 @@ WSL2 の Docker とどう話すかを 3 つから選べます。設定画面で�
 
 ```bash
 npm install          # 依存の取得と Git hooks の設定
-npm run tauri dev    # 開発ビルドで起動
+npm run app          # 開発ビルドで起動
 ```
 
 ### 技術スタック

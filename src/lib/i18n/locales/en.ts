@@ -8,6 +8,7 @@ export const en = {
   "nav.networks": "Networks",
   "nav.storage": "Storage",
   "nav.settings": "Settings",
+  "nav.update": "Update to {version}",
 
   "app.connecting": "Connecting to WSL2...",
   "app.starting": "Starting WSL2...",
@@ -305,12 +306,16 @@ export const en = {
   "settings.update.checking": "Checking...",
   "settings.update.upToDate": "You're on the latest version.",
   "settings.update.available": "Version {version} is available.",
-  "settings.update.availableToast": "Version {version} is available. Update it from Settings.",
+  "settings.update.availableToast": "Version {version} is available. Update it from the sidebar.",
   "settings.update.downloadButton": "Download and install",
   "settings.update.downloading": "Downloading and installing...",
-  "settings.update.checkFailed": "Couldn't check for updates: {error}",
+  "settings.update.checkFailed": "Couldn't check for updates.",
   "settings.update.releaseNotFound": "No update information was found.",
-  "settings.update.installFailed": "Update failed: {error}",
+  "settings.update.signatureFailed":
+    "The update was cancelled because its signature couldn't be verified.",
+  "settings.update.platformNotFound": "No update was found for this platform.",
+  "settings.update.connectFailed": "Couldn't connect to the server.",
+  "settings.update.installFailed": "Update failed.",
 
   "setup.welcome": "Welcome",
   "setup.lead": "Select the WSL2 distro running Docker.",
