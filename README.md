@@ -38,16 +38,34 @@ Docker のインストール形態は問いません。rootless インストー�
 
 ## インストール
 
-配布用ビルドはまだ用意していないため、手元でビルドしてください。
+### winget
+
+```powershell
+winget install Dockl.Dockl
+```
+
+### GitHub Releases
+
+[Releases](https://github.com/ssawaki/dockl/releases) からインストーラ（`Dockl_<version>_x64-setup.exe`）をダウンロードして実行します。インストーラ不要の単体 exe（`Dockl_<version>_x64.exe`）も同じページにあります。
+
+どちらもコード署名はされていないため、SmartScreen の警告が表示されることがあります。管理者権限は不要で、常に現在のユーザーにのみインストールされます。
+
+### ソースからビルド
 
 ```bash
 npm install
 npm run installer
 ```
 
-インストーラは `src-tauri/target/release/bundle/nsis/` に生成されます。管理者権限は不要で、常に現在のユーザーにのみインストールされます。
+インストーラは `src-tauri/target/release/bundle/nsis/` に生成されます。アップデート用の署名鍵（`TAURI_SIGNING_PRIVATE_KEY`）が無い環境では、インストーラの生成後、署名の段階でエラーになります。
 
 初回起動時にセットアップ画面が開き、WSL2 ディストロを選んで接続するだけで使い始められます。
+
+### アップデート
+
+起動時に新しいバージョンを確認し、見つかるとサイドバーの「設定」の上に更新ボタンが表示されます。押すとダウンロードとインストールを行い、再起動します。更新は自動では行われません。
+
+winget でインストールした場合は、`winget upgrade Dockl.Dockl` でも更新できます。
 
 ## 接続方式
 
